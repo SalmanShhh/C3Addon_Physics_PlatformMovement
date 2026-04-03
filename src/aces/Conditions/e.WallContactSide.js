@@ -1,6 +1,6 @@
 export const config = {
   returnType: "number",
-  description: "Which wall the character is touching: -1 = left, 1 = right, 0 = none.",
+  description: "Side of the most recent wall contact: -1 = left wall, 1 = right wall, 0 = no wall.",
   params: [],
 };
 

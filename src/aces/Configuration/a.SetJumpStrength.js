@@ -6,7 +6,7 @@ export const config = {
     {
       id: "strength",
       name: "Strength",
-      desc: "Jump power. Higher = higher jump.",
+      desc: "New jump impulse in px/s.",
       type: "number",
       initialValue: "600",
     },

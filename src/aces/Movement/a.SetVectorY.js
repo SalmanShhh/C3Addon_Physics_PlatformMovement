@@ -1,12 +1,12 @@
 export const config = {
   listName: "Set vector Y",
   displayText: "Set vector Y to {0}",
-  description: "Set the vertical speed directly.",
+  description: "Directly set the vertical Physics velocity (px/s).",
   params: [
     {
       id: "vectorY",
       name: "Vector Y",
-      desc: "Vertical speed. Negative = up.",
+      desc: "New vertical velocity in px/s. Use negative values to move upward.",
       type: "number",
       initialValue: "0",
     },

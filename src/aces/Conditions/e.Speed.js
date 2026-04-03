@@ -1,6 +1,6 @@
 export const config = {
   returnType: "number",
-  description: "The character's overall speed.",
+  description: "Current movement speed in px/s (magnitude of velocity vector).",
   params: [],
 };
 

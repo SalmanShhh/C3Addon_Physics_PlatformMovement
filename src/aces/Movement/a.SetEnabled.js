@@ -1,12 +1,12 @@
 export const config = {
   listName: "Set enabled",
   displayText: "Set enabled to {0}",
-  description: "Turn the whole behavior on or off.",
+  description: "Fully enable or disable the behavior.",
   params: [
     {
       id: "enabled",
       name: "Enabled",
-      desc: "Check to enable the behavior.",
+      desc: "True to enable.",
       type: "boolean",
       initialValue: "true",
     },

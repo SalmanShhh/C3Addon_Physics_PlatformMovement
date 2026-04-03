@@ -1,7 +1,7 @@
 export const config = {
   listName: "Compare vector Y",
   displayText: "Vector Y {0} {1}",
-  description: "Compare the vertical speed to a value. Positive = falling.",
+  description: "Compare the current Y velocity component against a value. Positive = downward.",
   params: [
     {
       id: "comparison",

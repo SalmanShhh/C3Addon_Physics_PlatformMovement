@@ -1,7 +1,7 @@
 export const config = {
   listName: "Set default controls",
   displayText: "Set default controls to {0}",
-  description: "Turn built-in keyboard controls on or off.",
+  description: "Enable or disable automatic keyboard input reading.",
   params: [
     {
       id: "enabled",

@@ -1,12 +1,12 @@
 export const config = {
   listName: "Set gravity",
   displayText: "Set gravity to {0}",
-  description: "Change how strongly the character is pulled down.",
+  description: "Override the additional downward gravity (px/s²) at runtime.",
   params: [
     {
       id: "gravity",
       name: "Gravity",
-      desc: "Extra downward pull. 0 = use Physics gravity only.",
+      desc: "Extra downward pull acceleration in px/s². (0 = use Physics gravity only).",
       type: "number",
       initialValue: "0",
     },

@@ -1,12 +1,12 @@
 export const config = {
   listName: "Set wall slide",
   displayText: "Set wall slide to {0}",
-  description: "Allow or prevent sliding down walls.",
+  description: "Toggle the ability to slide down walls.",
   params: [
     {
       id: "enabled",
       name: "Enabled",
-      desc: "Check to allow wall sliding.",
+      desc: "Enable wall sliding.",
       type: "boolean",
       initialValue: "false",
     },

@@ -6,7 +6,7 @@ export const config = {
     {
       id: "accel",
       name: "Acceleration",
-      desc: "How fast to reach top speed.",
+      desc: "New acceleration in px/s².",
       type: "number",
       initialValue: "1500",
     },

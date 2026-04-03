@@ -1,12 +1,12 @@
 export const config = {
   listName: "Set deceleration",
   displayText: "Set deceleration to {0}",
-  description: "Change how quickly the character slows down.",
+  description: "Override Deceleration at runtime.",
   params: [
     {
       id: "decel",
       name: "Deceleration",
-      desc: "How fast to come to a stop.",
+      desc: "New deceleration in px/s².",
       type: "number",
       initialValue: "1500",
     },

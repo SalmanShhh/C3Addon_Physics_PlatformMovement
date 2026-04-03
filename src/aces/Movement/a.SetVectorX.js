@@ -1,12 +1,12 @@
 export const config = {
   listName: "Set vector X",
   displayText: "Set vector X to {0}",
-  description: "Set the horizontal speed directly.",
+  description: "Directly set the horizontal Physics velocity (px/s).",
   params: [
     {
       id: "vectorX",
       name: "Vector X",
-      desc: "Horizontal speed. Positive = right.",
+      desc: "New horizontal velocity in px/s.",
       type: "number",
       initialValue: "0",
     },

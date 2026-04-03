@@ -1,6 +1,6 @@
 export const config = {
   returnType: "number",
-  description: "Horizontal speed. Positive = right, negative = left.",
+  description: "Current horizontal Physics velocity (px/s). Positive = right.",
   params: [],
 };
 

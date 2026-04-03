@@ -14,7 +14,7 @@ export const minConstructVersion = undefined;
 export const author = "SalmanShh";
 export const website = "https://www.construct.net";
 export const documentation = "https://www.construct.net";
-export const description = "Platform-style movement driven by the Physics engine — run, jump, wall-slide, and interact with rigid bodies.";
+export const description = "Platform-style movement driven by the Physics engine — run, jump, wall-slide, and interact using the built-in Physics behavior.";
 export const category = ADDON_CATEGORY.MOVEMENTS;
 
 export const hasDomside = false;

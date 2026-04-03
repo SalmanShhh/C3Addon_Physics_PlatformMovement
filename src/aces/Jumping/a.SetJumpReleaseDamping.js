@@ -1,12 +1,12 @@
 export const config = {
   listName: "Set jump release damping",
   displayText: "Set jump release damping to {0}%",
-  description: "Control how much shorter a jump is when the button is released early.",
+  description: "Set the percentage of upward velocity retained when the jump button is released early. Lower values give more control over jump height.",
   params: [
     {
       id: "percent",
       name: "Damping %",
-      desc: "How much upward speed to keep (0-100). Lower = shorter jump on release.",
+      desc: "Percentage of upward velocity to keep on jump release (0-100). Default is 50.",
       type: "number",
       initialValue: "50",
     },

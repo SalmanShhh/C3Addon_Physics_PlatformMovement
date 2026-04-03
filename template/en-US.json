@@ -5,7 +5,7 @@
     "behaviors": {
       "salmanshh_platformer_physics": {
         "name": "Platformer Physics",
-        "description": "Platform-style movement driven by the Physics engine — run, jump, wall-slide, and interact with rigid bodies.",
+        "description": "Platform-style movement driven by the Physics engine — run, jump, wall-slide, and interact using the built-in Physics behavior.",
         "help-url": "https://www.construct.net",
         "aceCategories": {
           "Configuration": "Configuration",
@@ -91,29 +91,29 @@
             "params": {
               "accel": {
                 "name": "Acceleration",
-                "desc": "How fast to reach top speed."
+                "desc": "New acceleration in px/s²."
               }
             }
           },
           "SetDeceleration": {
             "list-name": "Set deceleration",
             "display-text": "Set deceleration to {0}",
-            "description": "Change how quickly the character slows down.",
+            "description": "Override Deceleration at runtime.",
             "params": {
               "decel": {
                 "name": "Deceleration",
-                "desc": "How fast to come to a stop."
+                "desc": "New deceleration in px/s²."
               }
             }
           },
           "SetGravity": {
             "list-name": "Set gravity",
             "display-text": "Set gravity to {0}",
-            "description": "Change how strongly the character is pulled down.",
+            "description": "Override the additional downward gravity (px/s²) at runtime.",
             "params": {
               "gravity": {
                 "name": "Gravity",
-                "desc": "Extra downward pull. 0 = use Physics gravity only."
+                "desc": "Extra downward pull acceleration in px/s². (0 = use Physics gravity only)."
               }
             }
           },
@@ -124,18 +124,18 @@
             "params": {
               "strength": {
                 "name": "Strength",
-                "desc": "Jump power. Higher = higher jump."
+                "desc": "New jump impulse in px/s."
               }
             }
           },
           "SetMaxFallSpeed": {
             "list-name": "Set max fall speed",
             "display-text": "Set max fall speed to {0}",
-            "description": "Change the fastest the character can fall.",
+            "description": "Change the maximum fall speed the character can reach.",
             "params": {
               "speed": {
                 "name": "Speed",
-                "desc": "Maximum falling speed."
+                "desc": "Maximum falling speed in px/s."
               }
             }
           },
@@ -159,11 +159,11 @@
           "SetJumpReleaseDamping": {
             "list-name": "Set jump release damping",
             "display-text": "Set jump release damping to {0}%",
-            "description": "Control how much shorter a jump is when the button is released early.",
+            "description": "Set the percentage of upward velocity retained when the jump button is released early. Lower values give more control over jump height.",
             "params": {
               "percent": {
                 "name": "Damping %",
-                "desc": "How much upward speed to keep (0-100). Lower = shorter jump on release."
+                "desc": "Percentage of upward velocity to keep on jump release (0-100). Default is 50."
               }
             }
           },
@@ -181,29 +181,29 @@
           "SetWallJump": {
             "list-name": "Set wall jump",
             "display-text": "Set wall jump to {0}",
-            "description": "Allow or prevent jumping off walls.",
+            "description": "Toggle the ability to jump off walls.",
             "params": {
               "enabled": {
                 "name": "Enabled",
-                "desc": "Check to allow wall jumping."
+                "desc": "Enable wall jumping."
               }
             }
           },
           "SetWallSlide": {
             "list-name": "Set wall slide",
             "display-text": "Set wall slide to {0}",
-            "description": "Allow or prevent sliding down walls.",
+            "description": "Toggle the ability to slide down walls.",
             "params": {
               "enabled": {
                 "name": "Enabled",
-                "desc": "Check to allow wall sliding."
+                "desc": "Enable wall sliding."
               }
             }
           },
           "SetDefaultControls": {
             "list-name": "Set default controls",
             "display-text": "Set default controls to {0}",
-            "description": "Turn built-in keyboard controls on or off.",
+            "description": "Enable or disable automatic keyboard input reading.",
             "params": {
               "enabled": {
                 "name": "Enabled",
@@ -214,11 +214,11 @@
           "SetEnabled": {
             "list-name": "Set enabled",
             "display-text": "Set enabled to {0}",
-            "description": "Turn the whole behavior on or off.",
+            "description": "Fully enable or disable the behavior.",
             "params": {
               "enabled": {
                 "name": "Enabled",
-                "desc": "Check to enable the behavior."
+                "desc": "True to enable."
               }
             }
           },
@@ -245,59 +245,59 @@
           "SetIgnoreInput": {
             "list-name": "Set ignore input",
             "display-text": "Set ignore input to {0}",
-            "description": "Block all movement input until turned off.",
+            "description": "When true, all input is ignored until re-enabled.",
             "params": {
               "ignore": {
                 "name": "Ignore",
-                "desc": "Check to ignore all input."
+                "desc": "True to ignore all input."
               }
             }
           },
           "SetVector": {
             "list-name": "Set vector",
             "display-text": "Set vector to ({0}, {1})",
-            "description": "Set horizontal and vertical speed at once.",
+            "description": "Set horizontal and vertical speed in px/s.",
             "params": {
               "vectorX": {
                 "name": "Vector X",
-                "desc": "Horizontal speed. Positive = right."
+                "desc": "Horizontal speed in px/s"
               },
               "vectorY": {
                 "name": "Vector Y",
-                "desc": "Vertical speed. Negative = up."
+                "desc": "New vertical velocity in px/s. Use negative values to move upward."
               }
             }
           },
           "SetVectorX": {
             "list-name": "Set vector X",
             "display-text": "Set vector X to {0}",
-            "description": "Set the horizontal speed directly.",
+            "description": "Directly set the horizontal Physics velocity (px/s).",
             "params": {
               "vectorX": {
                 "name": "Vector X",
-                "desc": "Horizontal speed. Positive = right."
+                "desc": "New horizontal velocity in px/s."
               }
             }
           },
           "SetVectorY": {
             "list-name": "Set vector Y",
             "display-text": "Set vector Y to {0}",
-            "description": "Set the vertical speed directly.",
+            "description": "Directly set the vertical Physics velocity (px/s).",
             "params": {
               "vectorY": {
                 "name": "Vector Y",
-                "desc": "Vertical speed. Negative = up."
+                "desc": "New vertical velocity in px/s. Use negative values to move upward."
               }
             }
           },
           "SimulateControl": {
             "list-name": "Simulate control",
             "display-text": "Simulate {0}",
-            "description": "Act as if the player pressed a control this tick.",
+            "description": "Simulate pressing or releasing a movement control this tick.",
             "params": {
               "control": {
                 "name": "Control",
-                "desc": "Which control to simulate.",
+                "desc": "Control to simulate.",
                 "items": {
                   "left": "Left",
                   "right": "Right",
@@ -347,7 +347,7 @@
           "CompareVectorX": {
             "list-name": "Compare vector X",
             "display-text": "Vector X {0} {1}",
-            "description": "Compare the horizontal speed to a value.",
+            "description": "Compare the current X velocity component against a value.",
             "params": {
               "comparison": {
                 "name": "Comparison",
@@ -369,7 +369,7 @@
           "CompareVectorY": {
             "list-name": "Compare vector Y",
             "display-text": "Vector Y {0} {1}",
-            "description": "Compare the vertical speed to a value. Positive = falling.",
+            "description": "Compare the current Y velocity component against a value. Positive = downward.",
             "params": {
               "comparison": {
                 "name": "Comparison",
@@ -563,12 +563,12 @@
           },
           "Speed": {
             "translated-name": "Speed",
-            "description": "The character's overall speed.",
+            "description": "Current movement speed in px/s (magnitude of velocity vector).",
             "params": {}
           },
           "VectorX": {
             "translated-name": "VectorX",
-            "description": "Horizontal speed. Positive = right, negative = left.",
+            "description": "Current horizontal Physics velocity (px/s). Positive = right.",
             "params": {}
           },
           "VectorY": {
@@ -578,7 +578,7 @@
           },
           "WallContactSide": {
             "translated-name": "WallContactSide",
-            "description": "Which wall the character is touching: -1 = left, 1 = right, 0 = none.",
+            "description": "Side of the most recent wall contact: -1 = left wall, 1 = right wall, 0 = no wall.",
             "params": {}
           }
         }

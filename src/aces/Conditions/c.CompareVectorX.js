@@ -1,7 +1,7 @@
 export const config = {
   listName: "Compare vector X",
   displayText: "Vector X {0} {1}",
-  description: "Compare the horizontal speed to a value.",
+  description: "Compare the current X velocity component against a value.",
   params: [
     {
       id: "comparison",

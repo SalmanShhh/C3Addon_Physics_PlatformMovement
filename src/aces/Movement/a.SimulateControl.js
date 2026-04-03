@@ -1,12 +1,12 @@
 export const config = {
   listName: "Simulate control",
   displayText: "Simulate {0}",
-  description: "Act as if the player pressed a control this tick.",
+  description: "Simulate pressing or releasing a movement control this tick.",
   params: [
     {
       id: "control",
       name: "Control",
-      desc: "Which control to simulate.",
+      desc: "Control to simulate.",
       type: "combo",
       initialValue: "left",
       items: [

@@ -1,117 +1,584 @@
 {
   "languageTag": "en-US",
-  "fileDescription": "Strings for sample_addon.",
+  "fileDescription": "Strings for salmanshh_platformer_physics.",
   "text": {
-    "plugins": {
-      "sample_addon": {
-        "name": "Sample Addon",
-        "description": "Description",
+    "behaviors": {
+      "salmanshh_platformer_physics": {
+        "name": "Platformer Physics",
+        "description": "Platform-style movement driven by the Physics engine — run, jump, wall-slide, and interact with rigid bodies.",
         "help-url": "https://www.construct.net",
         "aceCategories": {
-          "Ace_Folders_In_Category_Folder": "Ace_Folders_In_Category_Folder",
-          "Aces_Files_In_Category_Folder": "Aces_Files_In_Category_Folder",
-          "Aces_In_Single_File": "Aces_In_Single_File"
+          "Configuration": "Configuration",
+          "Jumping": "Jumping",
+          "Movement": "Movement",
+          "Conditions": "Conditions"
         },
-        "properties": {},
+        "properties": {
+          "maxSpeed": {
+            "name": "Max Speed",
+            "desc": "Maximum horizontal movement speed in px/s."
+          },
+          "acceleration": {
+            "name": "Acceleration",
+            "desc": "Rate at which horizontal velocity increases toward Max Speed (px/s²)."
+          },
+          "deceleration": {
+            "name": "Deceleration",
+            "desc": "Rate at which horizontal velocity decreases to zero when no input is given (px/s²)."
+          },
+          "jumpStrength": {
+            "name": "Jump Strength",
+            "desc": "Upward impulse magnitude applied when a jump executes (px/s)."
+          },
+          "gravity": {
+            "name": "Gravity",
+            "desc": "Additional downward acceleration (px/s²) applied per tick on top of Physics world gravity."
+          },
+          "maxFallSpeed": {
+            "name": "Max Fall Speed",
+            "desc": "Terminal velocity clamp (px/s downward)."
+          },
+          "defaultControls": {
+            "name": "Default Controls",
+            "desc": "When true, the behavior reads Arrow Left/Right, A/D, and Space/Up/W from the runtime keyboard each tick."
+          },
+          "slopeTolerance": {
+            "name": "Slope Tolerance",
+            "desc": "Contact classification threshold as a fraction of half-height below center to count as floor."
+          },
+          "coyoteTime": {
+            "name": "Coyote Time",
+            "desc": "Seconds after leaving a floor edge during which a jump is still allowed."
+          },
+          "jumpBuffer": {
+            "name": "Jump Buffer",
+            "desc": "Seconds a jump input is remembered before landing."
+          },
+          "maxJumps": {
+            "name": "Max Jumps",
+            "desc": "Total jumps allowed per airborne period. 1 = single jump, 2 = double jump."
+          },
+          "wallSlide": {
+            "name": "Wall Slide",
+            "desc": "Clamp fall speed to Wall Slide Speed when pressing into a wall while airborne."
+          },
+          "wallSlideSpeed": {
+            "name": "Wall Slide Speed",
+            "desc": "Maximum downward speed (px/s) while wall sliding."
+          },
+          "wallJump": {
+            "name": "Wall Jump",
+            "desc": "Allow jumping off a wall."
+          },
+          "wallJumpStrength": {
+            "name": "Wall Jump Strength",
+            "desc": "Horizontal impulse component of a wall jump."
+          },
+          "variableJumpHeight": {
+            "name": "Variable Jump Height",
+            "desc": "Releasing jump early dampens upward velocity, giving short/tall jump variation."
+          },
+          "debugMode": {
+            "name": "Debug Mode",
+            "desc": "Print contact classification and velocity state to the browser console each tick."
+          }
+        },
         "actions": {
-          "ActionCombo": {
-            "list-name": "Sample Action Combo",
-            "display-text": "Sample Action Combo {0}",
-            "description": "This is a sample action",
+          "SetAcceleration": {
+            "list-name": "Set acceleration",
+            "display-text": "Set acceleration to {0}",
+            "description": "Change how quickly the character speeds up.",
             "params": {
-              "param1": {
-                "name": "Param1",
-                "desc": "This is a sample param",
+              "accel": {
+                "name": "Acceleration",
+                "desc": "How fast to reach top speed."
+              }
+            }
+          },
+          "SetDeceleration": {
+            "list-name": "Set deceleration",
+            "display-text": "Set deceleration to {0}",
+            "description": "Change how quickly the character slows down.",
+            "params": {
+              "decel": {
+                "name": "Deceleration",
+                "desc": "How fast to come to a stop."
+              }
+            }
+          },
+          "SetGravity": {
+            "list-name": "Set gravity",
+            "display-text": "Set gravity to {0}",
+            "description": "Change how strongly the character is pulled down.",
+            "params": {
+              "gravity": {
+                "name": "Gravity",
+                "desc": "Extra downward pull. 0 = use Physics gravity only."
+              }
+            }
+          },
+          "SetJumpStrength": {
+            "list-name": "Set jump strength",
+            "display-text": "Set jump strength to {0}",
+            "description": "Change how high the character jumps.",
+            "params": {
+              "strength": {
+                "name": "Strength",
+                "desc": "Jump power. Higher = higher jump."
+              }
+            }
+          },
+          "SetMaxFallSpeed": {
+            "list-name": "Set max fall speed",
+            "display-text": "Set max fall speed to {0}",
+            "description": "Change the fastest the character can fall.",
+            "params": {
+              "speed": {
+                "name": "Speed",
+                "desc": "Maximum falling speed."
+              }
+            }
+          },
+          "SetMaxSpeed": {
+            "list-name": "Set max speed",
+            "display-text": "Set max speed to {0}",
+            "description": "Change the top running speed.",
+            "params": {
+              "speed": {
+                "name": "Speed",
+                "desc": "New top speed in pixels per second."
+              }
+            }
+          },
+          "ResetJumps": {
+            "list-name": "Reset jumps",
+            "display-text": "Reset jumps",
+            "description": "Give back all jumps as if the character just landed.",
+            "params": {}
+          },
+          "SetJumpReleaseDamping": {
+            "list-name": "Set jump release damping",
+            "display-text": "Set jump release damping to {0}%",
+            "description": "Control how much shorter a jump is when the button is released early.",
+            "params": {
+              "percent": {
+                "name": "Damping %",
+                "desc": "How much upward speed to keep (0-100). Lower = shorter jump on release."
+              }
+            }
+          },
+          "SetMaxJumps": {
+            "list-name": "Set max jumps",
+            "display-text": "Set max jumps to {0}",
+            "description": "Set how many times the character can jump before landing.",
+            "params": {
+              "count": {
+                "name": "Count",
+                "desc": "1 = normal, 2 = double jump, etc."
+              }
+            }
+          },
+          "SetWallJump": {
+            "list-name": "Set wall jump",
+            "display-text": "Set wall jump to {0}",
+            "description": "Allow or prevent jumping off walls.",
+            "params": {
+              "enabled": {
+                "name": "Enabled",
+                "desc": "Check to allow wall jumping."
+              }
+            }
+          },
+          "SetWallSlide": {
+            "list-name": "Set wall slide",
+            "display-text": "Set wall slide to {0}",
+            "description": "Allow or prevent sliding down walls.",
+            "params": {
+              "enabled": {
+                "name": "Enabled",
+                "desc": "Check to allow wall sliding."
+              }
+            }
+          },
+          "SetDefaultControls": {
+            "list-name": "Set default controls",
+            "display-text": "Set default controls to {0}",
+            "description": "Turn built-in keyboard controls on or off.",
+            "params": {
+              "enabled": {
+                "name": "Enabled",
+                "desc": "Check to enable keyboard controls."
+              }
+            }
+          },
+          "SetEnabled": {
+            "list-name": "Set enabled",
+            "display-text": "Set enabled to {0}",
+            "description": "Turn the whole behavior on or off.",
+            "params": {
+              "enabled": {
+                "name": "Enabled",
+                "desc": "Check to enable the behavior."
+              }
+            }
+          },
+          "SetFreezeAxis": {
+            "list-name": "Set freeze axis",
+            "display-text": "Freeze {0} axis: {1}",
+            "description": "Lock an axis so the character cannot move on it.",
+            "params": {
+              "axis": {
+                "name": "Axis",
+                "desc": "Which axis to freeze or unfreeze.",
                 "items": {
-                  "test": "test",
-                  "test2": "test2"
+                  "horizontal": "Horizontal (X)",
+                  "vertical": "Vertical (Y)",
+                  "both": "Both"
+                }
+              },
+              "freeze": {
+                "name": "Freeze",
+                "desc": "Check to freeze, uncheck to unfreeze."
+              }
+            }
+          },
+          "SetIgnoreInput": {
+            "list-name": "Set ignore input",
+            "display-text": "Set ignore input to {0}",
+            "description": "Block all movement input until turned off.",
+            "params": {
+              "ignore": {
+                "name": "Ignore",
+                "desc": "Check to ignore all input."
+              }
+            }
+          },
+          "SetVector": {
+            "list-name": "Set vector",
+            "display-text": "Set vector to ({0}, {1})",
+            "description": "Set horizontal and vertical speed at once.",
+            "params": {
+              "vectorX": {
+                "name": "Vector X",
+                "desc": "Horizontal speed. Positive = right."
+              },
+              "vectorY": {
+                "name": "Vector Y",
+                "desc": "Vertical speed. Negative = up."
+              }
+            }
+          },
+          "SetVectorX": {
+            "list-name": "Set vector X",
+            "display-text": "Set vector X to {0}",
+            "description": "Set the horizontal speed directly.",
+            "params": {
+              "vectorX": {
+                "name": "Vector X",
+                "desc": "Horizontal speed. Positive = right."
+              }
+            }
+          },
+          "SetVectorY": {
+            "list-name": "Set vector Y",
+            "display-text": "Set vector Y to {0}",
+            "description": "Set the vertical speed directly.",
+            "params": {
+              "vectorY": {
+                "name": "Vector Y",
+                "desc": "Vertical speed. Negative = up."
+              }
+            }
+          },
+          "SimulateControl": {
+            "list-name": "Simulate control",
+            "display-text": "Simulate {0}",
+            "description": "Act as if the player pressed a control this tick.",
+            "params": {
+              "control": {
+                "name": "Control",
+                "desc": "Which control to simulate.",
+                "items": {
+                  "left": "Left",
+                  "right": "Right",
+                  "jump": "Jump",
+                  "jump_release": "Jump release",
+                  "stop": "Stop"
                 }
               }
             }
           },
-          "Action": {
-            "list-name": "Sample Action",
-            "display-text": "Sample Action {0}",
-            "description": "This is a sample action",
-            "params": {
-              "param1": {
-                "name": "Param1",
-                "desc": "This is a sample param"
-              }
-            }
-          },
-          "AsyncAction": {
-            "list-name": "Sample Action Async",
-            "display-text": "Sample Action Async",
-            "description": "This is a sample action",
+          "Stop": {
+            "list-name": "Stop",
+            "display-text": "Stop",
+            "description": "Instantly stop all movement.",
             "params": {}
-          },
-          "SampleAction": {
-            "list-name": "Sample Action",
-            "display-text": "Sample Action {0}",
-            "description": "This is a sample action",
-            "params": {
-              "param1": {
-                "name": "Param1",
-                "desc": "This is a sample param"
-              }
-            }
           }
         },
         "conditions": {
-          "ConditionCombo": {
-            "list-name": "Sample Condition",
-            "display-text": "Sample Condition {0}",
-            "description": "This is a sample condition",
+          "CanJump": {
+            "list-name": "Can jump",
+            "display-text": "Can jump",
+            "description": "Check if the character is able to jump right now.",
+            "params": {}
+          },
+          "CompareSpeed": {
+            "list-name": "Compare speed",
+            "display-text": "Speed {0} {1}",
+            "description": "Compare the character's current speed to a value.",
             "params": {
-              "param1": {
-                "name": "Param1",
-                "desc": "This is a sample param",
+              "comparison": {
+                "name": "Comparison",
+                "desc": "Comparison operator.",
                 "items": {
-                  "TRUE": "True",
-                  "FALSE": "False"
+                  "less": "<",
+                  "less_eq": "≤",
+                  "equal": "=",
+                  "greater_eq": "≥",
+                  "greater": ">"
+                }
+              },
+              "value": {
+                "name": "Speed",
+                "desc": "Speed to compare against in px/s."
+              }
+            }
+          },
+          "CompareVectorX": {
+            "list-name": "Compare vector X",
+            "display-text": "Vector X {0} {1}",
+            "description": "Compare the horizontal speed to a value.",
+            "params": {
+              "comparison": {
+                "name": "Comparison",
+                "desc": "Comparison operator.",
+                "items": {
+                  "less": "<",
+                  "less_eq": "≤",
+                  "equal": "=",
+                  "greater_eq": "≥",
+                  "greater": ">"
+                }
+              },
+              "value": {
+                "name": "Vector X",
+                "desc": "Value to compare against."
+              }
+            }
+          },
+          "CompareVectorY": {
+            "list-name": "Compare vector Y",
+            "display-text": "Vector Y {0} {1}",
+            "description": "Compare the vertical speed to a value. Positive = falling.",
+            "params": {
+              "comparison": {
+                "name": "Comparison",
+                "desc": "Comparison operator.",
+                "items": {
+                  "less": "<",
+                  "less_eq": "≤",
+                  "equal": "=",
+                  "greater_eq": "≥",
+                  "greater": ">"
+                }
+              },
+              "value": {
+                "name": "Vector Y",
+                "desc": "Value to compare against."
+              }
+            }
+          },
+          "IsAxisFrozen": {
+            "list-name": "Is axis frozen",
+            "display-text": "Is {0} axis frozen",
+            "description": "Check if an axis is currently frozen.",
+            "params": {
+              "axis": {
+                "name": "Axis",
+                "desc": "Which axis to check.",
+                "items": {
+                  "horizontal": "Horizontal (X)",
+                  "vertical": "Vertical (Y)"
                 }
               }
             }
           },
-          "Condition": {
-            "list-name": "Sample Condition",
-            "display-text": "Sample Condition {0}",
-            "description": "This is a sample condition",
+          "IsEnabled": {
+            "list-name": "Is enabled",
+            "display-text": "Is enabled",
+            "description": "Check if the behavior is currently active.",
+            "params": {}
+          },
+          "IsFacingRight": {
+            "list-name": "Is facing right",
+            "display-text": "Is facing right",
+            "description": "Check if the character is facing right. Invert for facing left.",
+            "params": {}
+          },
+          "IsFalling": {
+            "list-name": "Is falling",
+            "display-text": "Is falling",
+            "description": "Check if the character is falling through the air.",
+            "params": {}
+          },
+          "IsIgnoringInput": {
+            "list-name": "Is ignoring input",
+            "display-text": "Is ignoring input",
+            "description": "Check if input is currently being ignored.",
+            "params": {}
+          },
+          "IsJumping": {
+            "list-name": "Is jumping",
+            "display-text": "Is jumping",
+            "description": "Check if the character is currently moving upward from a jump.",
+            "params": {}
+          },
+          "IsMoving": {
+            "list-name": "Is moving",
+            "display-text": "Is moving",
+            "description": "Check if the character is moving at all.",
+            "params": {}
+          },
+          "IsOnCeiling": {
+            "list-name": "Is on ceiling",
+            "display-text": "Is on ceiling",
+            "description": "Check if the character is touching a ceiling.",
+            "params": {}
+          },
+          "IsOnFloor": {
+            "list-name": "Is on floor",
+            "display-text": "Is on floor",
+            "description": "Check if the character is standing on the ground.",
+            "params": {}
+          },
+          "IsOnWall": {
+            "list-name": "Is on wall",
+            "display-text": "Is on wall ({0})",
+            "description": "Check if the character is touching a wall.",
             "params": {
-              "param1": {
-                "name": "Param1",
-                "desc": "This is a sample param"
+              "side": {
+                "name": "Side",
+                "desc": "Which side to check.",
+                "items": {
+                  "left": "Left",
+                  "right": "Right",
+                  "either": "Either"
+                }
               }
             }
           },
-          "Trigger": {
-            "list-name": "Sample Trigger",
-            "display-text": "Sample Trigger",
-            "description": "This is a sample trigger",
+          "IsWallSliding": {
+            "list-name": "Is wall sliding",
+            "display-text": "Is wall sliding",
+            "description": "Check if the character is sliding down a wall.",
             "params": {}
           },
-          "SampleCondition": {
-            "list-name": "Sample Condition",
-            "display-text": "Sample Condition",
-            "description": "This is a sample condition",
+          "OnDoubleJumped": {
+            "list-name": "On double jumped",
+            "display-text": "On double jumped",
+            "description": "Triggered when the character uses an extra mid-air jump.",
+            "params": {}
+          },
+          "OnFacingChanged": {
+            "list-name": "On facing changed",
+            "display-text": "On facing changed",
+            "description": "Triggered when the character turns around.",
+            "params": {}
+          },
+          "OnFallenOff": {
+            "list-name": "On fallen off",
+            "display-text": "On fallen off",
+            "description": "Triggered when the character walks off a ledge.",
+            "params": {}
+          },
+          "OnJumped": {
+            "list-name": "On jumped",
+            "display-text": "On jumped",
+            "description": "Triggered every time the character jumps.",
+            "params": {}
+          },
+          "OnLanded": {
+            "list-name": "On landed",
+            "display-text": "On landed",
+            "description": "Triggered when the character touches the ground after being in the air.",
+            "params": {}
+          },
+          "OnWallJumped": {
+            "list-name": "On wall jumped",
+            "display-text": "On wall jumped",
+            "description": "Triggered when the character jumps off a wall.",
             "params": {}
           }
         },
         "expressions": {
-          "Expression2": {
-            "translated-name": "Expression2",
-            "description": "Sample Expression",
+          "Acceleration": {
+            "translated-name": "Acceleration",
+            "description": "The current acceleration rate.",
             "params": {}
           },
-          "Expression": {
-            "translated-name": "Expression",
-            "description": "Sample Expression",
+          "AirTime": {
+            "translated-name": "AirTime",
+            "description": "Seconds the character has been in the air. 0 on the ground.",
             "params": {}
           },
-          "SampleExpression": {
-            "translated-name": "SampleExpression",
-            "description": "This is a sample expression",
+          "Deceleration": {
+            "translated-name": "Deceleration",
+            "description": "The current deceleration rate.",
+            "params": {}
+          },
+          "FacingDirection": {
+            "translated-name": "FacingDirection",
+            "description": "Which way the character faces: -1 = left, 1 = right.",
+            "params": {}
+          },
+          "Gravity": {
+            "translated-name": "Gravity",
+            "description": "The current extra gravity pull.",
+            "params": {}
+          },
+          "JumpsRemaining": {
+            "translated-name": "JumpsRemaining",
+            "description": "How many jumps the character has left before landing.",
+            "params": {}
+          },
+          "JumpStrength": {
+            "translated-name": "JumpStrength",
+            "description": "The current jump power.",
+            "params": {}
+          },
+          "MaxFallSpeed": {
+            "translated-name": "MaxFallSpeed",
+            "description": "The current maximum falling speed.",
+            "params": {}
+          },
+          "MaxSpeed": {
+            "translated-name": "MaxSpeed",
+            "description": "The current top speed limit.",
+            "params": {}
+          },
+          "MovingAngle": {
+            "translated-name": "MovingAngle",
+            "description": "The angle the character is moving in degrees.",
+            "params": {}
+          },
+          "Speed": {
+            "translated-name": "Speed",
+            "description": "The character's overall speed.",
+            "params": {}
+          },
+          "VectorX": {
+            "translated-name": "VectorX",
+            "description": "Horizontal speed. Positive = right, negative = left.",
+            "params": {}
+          },
+          "VectorY": {
+            "translated-name": "VectorY",
+            "description": "Vertical speed. Positive = falling, negative = rising.",
+            "params": {}
+          },
+          "WallContactSide": {
+            "translated-name": "WallContactSide",
+            "description": "Which wall the character is touching: -1 = left, 1 = right, 0 = none.",
             "params": {}
           }
         }

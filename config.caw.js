@@ -14,7 +14,7 @@ export const minConstructVersion = undefined;
 export const author = "SalmanShh";
 export const website = "https://www.construct.net";
 export const documentation = "https://www.construct.net";
-export const description = "Drop-in replacement for the built-in Platform behavior that uses the Built-in Physics Behavior";
+export const description = "Platform-style movement driven by the Physics engine — run, jump, wall-slide, and interact with rigid bodies.";
 export const category = ADDON_CATEGORY.MOVEMENTS;
 
 export const hasDomside = false;
@@ -37,23 +37,19 @@ export const files = {
   cordovaResourceFiles: [],
 };
 
-// categories that are not filled will use the folder name
-export const aceCategories = {};
+export const aceCategories = {
+  Movement: "Movement",
+  Jumping: "Jumping",
+  Conditions: "Conditions",
+  Configuration: "Configuration",
+};
 
 export const info = {
-  // icon: "icon.svg",
-  // PLUGIN world only
-  // defaultImageUrl: "default-image.png",
   Set: {
-    // COMMON to all
     CanBeBundled: true,
     IsDeprecated: false,
     GooglePlayServicesEnabled: false,
-
-    // BEHAVIOR only
-    IsOnlyOneAllowed: false,
-
-    // PLUGIN world only
+    IsOnlyOneAllowed: true,
     IsResizable: false,
     IsRotatable: false,
     Is3D: false,
@@ -63,11 +59,8 @@ export const info = {
     SupportsColor: false,
     SupportsEffects: false,
     MustPreDraw: false,
-
-    // PLUGIN object only
-    IsSingleGlobal: true,
+    IsSingleGlobal: false,
   },
-  // PLUGIN only
   AddCommonACEs: {
     Position: false,
     SceneGraph: false,
@@ -79,45 +72,123 @@ export const info = {
 };
 
 export const properties = [
-  /*
+  {
+    type: PROPERTY_TYPE.FLOAT,
+    id: "maxSpeed",
+    name: "Max Speed",
+    desc: "Maximum horizontal movement speed in px/s.",
+    options: { initialValue: 200 },
+  },
+  {
+    type: PROPERTY_TYPE.FLOAT,
+    id: "acceleration",
+    name: "Acceleration",
+    desc: "Rate at which horizontal velocity increases toward Max Speed (px/s²).",
+    options: { initialValue: 1500 },
+  },
+  {
+    type: PROPERTY_TYPE.FLOAT,
+    id: "deceleration",
+    name: "Deceleration",
+    desc: "Rate at which horizontal velocity decreases to zero when no input is given (px/s²).",
+    options: { initialValue: 1500 },
+  },
+  {
+    type: PROPERTY_TYPE.FLOAT,
+    id: "jumpStrength",
+    name: "Jump Strength",
+    desc: "Upward impulse magnitude applied when a jump executes (px/s).",
+    options: { initialValue: 600 },
+  },
+  {
+    type: PROPERTY_TYPE.FLOAT,
+    id: "gravity",
+    name: "Gravity",
+    desc: "Additional downward acceleration (px/s²) applied per tick on top of Physics world gravity.",
+    options: { initialValue: 0 },
+  },
+  {
+    type: PROPERTY_TYPE.FLOAT,
+    id: "maxFallSpeed",
+    name: "Max Fall Speed",
+    desc: "Terminal velocity clamp (px/s downward).",
+    options: { initialValue: 1000 },
+  },
+  {
+    type: PROPERTY_TYPE.CHECK,
+    id: "defaultControls",
+    name: "Default Controls",
+    desc: "When true, the behavior reads Arrow Left/Right, A/D, and Space/Up/W from the runtime keyboard each tick.",
+    options: { initialValue: true },
+  },
+  {
+    type: PROPERTY_TYPE.FLOAT,
+    id: "slopeTolerance",
+    name: "Slope Tolerance",
+    desc: "Contact classification threshold as a fraction of half-height below center to count as floor.",
+    options: { initialValue: 0.35 },
+  },
+  {
+    type: PROPERTY_TYPE.FLOAT,
+    id: "coyoteTime",
+    name: "Coyote Time",
+    desc: "Seconds after leaving a floor edge during which a jump is still allowed.",
+    options: { initialValue: 0.1 },
+  },
+  {
+    type: PROPERTY_TYPE.FLOAT,
+    id: "jumpBuffer",
+    name: "Jump Buffer",
+    desc: "Seconds a jump input is remembered before landing.",
+    options: { initialValue: 0.1 },
+  },
   {
     type: PROPERTY_TYPE.INTEGER,
-    id: "property_id",
-    options: {
-      initialValue: 0,
-      interpolatable: false,
-
-      // minValue: 0, // omit to disable
-      // maxValue: 100, // omit to disable
-
-      // for type combo only
-      // items: [
-      //   {itemId1: "item name1" },
-      //   {itemId2: "item name2" },
-      // ],
-
-      // dragSpeedMultiplier: 1, // omit to disable
-
-      // for type object only
-      // allowedPluginIds: ["Sprite", "<world>"],
-
-      // for type link only
-      // linkCallback: function(instOrObj) {},
-      // linkText: "Link Text",
-      // callbackType:
-      //   "for-each-instance"
-      //   "once-for-type"
-
-      // for type info only
-      // infoCallback: function(inst) {},
-
-      // for type projectfile only (plugins only, Addon SDK v2, r426+)
-      // A dropdown list from which any project file in the project can be chosen.
-      // The property value at runtime is a relative path to fetch the project file from.
-      // filter: ".txt", // optional: filter list by file extension (e.g., ".txt" to only list .txt files)
-    },
-    name: "Property Name",
-    desc: "Property Description",
-  }
-  */
+    id: "maxJumps",
+    name: "Max Jumps",
+    desc: "Total jumps allowed per airborne period. 1 = single jump, 2 = double jump.",
+    options: { initialValue: 1 },
+  },
+  {
+    type: PROPERTY_TYPE.CHECK,
+    id: "wallSlide",
+    name: "Wall Slide",
+    desc: "Clamp fall speed to Wall Slide Speed when pressing into a wall while airborne.",
+    options: { initialValue: false },
+  },
+  {
+    type: PROPERTY_TYPE.FLOAT,
+    id: "wallSlideSpeed",
+    name: "Wall Slide Speed",
+    desc: "Maximum downward speed (px/s) while wall sliding.",
+    options: { initialValue: 80 },
+  },
+  {
+    type: PROPERTY_TYPE.CHECK,
+    id: "wallJump",
+    name: "Wall Jump",
+    desc: "Allow jumping off a wall.",
+    options: { initialValue: false },
+  },
+  {
+    type: PROPERTY_TYPE.FLOAT,
+    id: "wallJumpStrength",
+    name: "Wall Jump Strength",
+    desc: "Horizontal impulse component of a wall jump.",
+    options: { initialValue: 450 },
+  },
+  {
+    type: PROPERTY_TYPE.CHECK,
+    id: "variableJumpHeight",
+    name: "Variable Jump Height",
+    desc: "Releasing jump early dampens upward velocity, giving short/tall jump variation.",
+    options: { initialValue: true },
+  },
+  {
+    type: PROPERTY_TYPE.CHECK,
+    id: "debugMode",
+    name: "Debug Mode",
+    desc: "Print contact classification and velocity state to the browser console each tick.",
+    options: { initialValue: false },
+  },
 ];

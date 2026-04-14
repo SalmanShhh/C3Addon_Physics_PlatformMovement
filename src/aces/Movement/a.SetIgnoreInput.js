@@ -16,5 +16,5 @@ export const config = {
 export const expose = true;
 
 export default function (ignore) {
-  this._ignoreInput = ignore ? true : false;
+  this.setIgnoreInput(ignore);
 }

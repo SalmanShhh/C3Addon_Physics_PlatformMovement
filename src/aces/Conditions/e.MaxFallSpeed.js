@@ -1,6 +1,6 @@
 export const config = {
   returnType: "number",
-  description: "The current maximum falling speed.",
+  description: "Current Max Fall Speed setting (px/s).",
   params: [],
 };
 

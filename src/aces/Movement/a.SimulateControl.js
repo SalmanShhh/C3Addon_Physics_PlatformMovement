@@ -23,24 +23,5 @@ export const config = {
 export const expose = true;
 
 export default function (control) {
-  if (this._ignoreInput) return;
-  const keys = ["left", "right", "jump", "jump_release", "stop"];
-  const key = keys[control] || keys[0];
-  switch (key) {
-    case "left":
-      this._inputX -= 1;
-      break;
-    case "right":
-      this._inputX += 1;
-      break;
-    case "jump":
-      this._jumpInputPressed = true;
-      break;
-    case "jump_release":
-      this._jumpInputReleased = true;
-      break;
-    case "stop":
-      this._stopInputThisTick = true;
-      break;
-  }
+  this.simulateControl(control);
 }

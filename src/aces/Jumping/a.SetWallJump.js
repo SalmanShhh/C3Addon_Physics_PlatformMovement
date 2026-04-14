@@ -16,5 +16,5 @@ export const config = {
 export const expose = true;
 
 export default function (enabled) {
-  this._wallJump = enabled ? true : false;
+  this.setWallJump(enabled);
 }

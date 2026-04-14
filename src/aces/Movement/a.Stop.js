@@ -8,7 +8,5 @@ export const config = {
 export const expose = true;
 
 export default function () {
-  if (this._phys) {
-    this._phys.setVelocity(0, 0);
-  }
+  this.stop();
 }

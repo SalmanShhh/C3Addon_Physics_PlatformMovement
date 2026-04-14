@@ -8,5 +8,5 @@ export const config = {
 export const expose = true;
 
 export default function () {
-  this._jumpsRemaining = this._maxJumps;
+  this.resetJumps();
 }

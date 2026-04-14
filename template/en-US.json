@@ -4,8 +4,8 @@
   "text": {
     "behaviors": {
       "salmanshh_platformer_physics": {
-        "name": "Platformer Physics",
-        "description": "Platform-style movement driven by the Physics engine — run, jump, wall-slide, and interact using the built-in Physics behavior.",
+        "name": "Physics Platformer",
+        "description": "Physics-based platformer movement — run, jump, wall-slide, and interact using the built-in Physics behavior.",
         "help-url": "https://www.construct.net",
         "aceCategories": {
           "Configuration": "Configuration",
@@ -37,10 +37,6 @@
           "maxFallSpeed": {
             "name": "Max Fall Speed",
             "desc": "Terminal velocity clamp (px/s downward)."
-          },
-          "defaultControls": {
-            "name": "Default Controls",
-            "desc": "When true, the behavior reads Arrow Left/Right, A/D, and Space/Up/W from the runtime keyboard each tick."
           },
           "slopeTolerance": {
             "name": "Slope Tolerance",
@@ -76,7 +72,7 @@
           },
           "variableJumpHeight": {
             "name": "Variable Jump Height",
-            "desc": "Releasing jump early dampens upward velocity, giving short/tall jump variation."
+            "desc": "Hold the jump button for a higher jump, release it early for a shorter one."
           },
           "debugMode": {
             "name": "Debug Mode",
@@ -200,14 +196,37 @@
               }
             }
           },
-          "SetDefaultControls": {
-            "list-name": "Set default controls",
-            "display-text": "Set default controls to {0}",
-            "description": "Enable or disable automatic keyboard input reading.",
+          "ApplyImpulse": {
+            "list-name": "Apply impulse",
+            "display-text": "Apply impulse ({0}, {1})",
+            "description": "Add an instantaneous velocity impulse to the current Physics velocity. The behavior's deceleration will naturally taper it off.",
             "params": {
-              "enabled": {
-                "name": "Enabled",
-                "desc": "Check to enable keyboard controls."
+              "vx": {
+                "name": "Vector X",
+                "desc": "Horizontal impulse in px/s (positive = right, negative = left)."
+              },
+              "vy": {
+                "name": "Vector Y",
+                "desc": "Vertical impulse in px/s (positive = down, negative = up)."
+              }
+            }
+          },
+          "Knockback": {
+            "list-name": "Apply knockback",
+            "display-text": "Apply knockback ({0}, {1}) for {2}s",
+            "description": "Set the velocity and suppress all movement input for the given duration. Gravity, wall slide, and max fall speed still apply during knockback.",
+            "params": {
+              "vx": {
+                "name": "Vector X",
+                "desc": "Horizontal knockback velocity in px/s (positive = right, negative = left)."
+              },
+              "vy": {
+                "name": "Vector Y",
+                "desc": "Vertical knockback velocity in px/s (positive = down, negative = up)."
+              },
+              "duration": {
+                "name": "Duration",
+                "desc": "How long in seconds to suppress movement input."
               }
             }
           },
@@ -388,6 +407,23 @@
               }
             }
           },
+          "IsAbilityEnabled": {
+            "list-name": "Is Movement Ability enabled",
+            "display-text": "Is {0} enabled",
+            "description": "Check if a specific platformer ability is currently enabled.",
+            "params": {
+              "ability": {
+                "name": "Ability",
+                "desc": "The ability to check.",
+                "items": {
+                  "coyote_time": "Coyote Time",
+                  "wall_sliding": "Wall Sliding",
+                  "wall_jump": "Wall Jump",
+                  "variable_jump": "Variable Jump"
+                }
+              }
+            }
+          },
           "IsAxisFrozen": {
             "list-name": "Is axis frozen",
             "display-text": "Is {0} axis frozen",
@@ -513,7 +549,7 @@
         "expressions": {
           "Acceleration": {
             "translated-name": "Acceleration",
-            "description": "The current acceleration rate.",
+            "description": "Current Acceleration setting (px/s²).",
             "params": {}
           },
           "AirTime": {
@@ -523,17 +559,17 @@
           },
           "Deceleration": {
             "translated-name": "Deceleration",
-            "description": "The current deceleration rate.",
+            "description": "Current Deceleration setting (px/s²).",
             "params": {}
           },
           "FacingDirection": {
             "translated-name": "FacingDirection",
-            "description": "Which way the character faces: -1 = left, 1 = right.",
+            "description": "Current facing as a signed number: -1 = left, 1 = right.",
             "params": {}
           },
           "Gravity": {
             "translated-name": "Gravity",
-            "description": "The current extra gravity pull.",
+            "description": "Current additional gravity setting (px/s²).",
             "params": {}
           },
           "JumpsRemaining": {
@@ -543,17 +579,17 @@
           },
           "JumpStrength": {
             "translated-name": "JumpStrength",
-            "description": "The current jump power.",
+            "description": "Current Jump Strength setting.",
             "params": {}
           },
           "MaxFallSpeed": {
             "translated-name": "MaxFallSpeed",
-            "description": "The current maximum falling speed.",
+            "description": "Current Max Fall Speed setting (px/s).",
             "params": {}
           },
           "MaxSpeed": {
             "translated-name": "MaxSpeed",
-            "description": "The current top speed limit.",
+            "description": "Current Max Speed setting (px/s).",
             "params": {}
           },
           "MovingAngle": {
@@ -573,7 +609,7 @@
           },
           "VectorY": {
             "translated-name": "VectorY",
-            "description": "Vertical speed. Positive = falling, negative = rising.",
+            "description": "Current vertical Physics velocity (px/s). Positive = down.",
             "params": {}
           },
           "WallContactSide": {

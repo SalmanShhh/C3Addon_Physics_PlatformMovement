@@ -28,9 +28,5 @@ export const config = {
 export const expose = true;
 
 export default function (axis, freeze) {
-  const keys = ["horizontal", "vertical", "both"];
-  const key = keys[axis] || keys[2];
-  const val = freeze ? true : false;
-  if (key === "horizontal" || key === "both") this._freezeX = val;
-  if (key === "vertical" || key === "both") this._freezeY = val;
+  this.setFreezeAxis(axis, freeze);
 }

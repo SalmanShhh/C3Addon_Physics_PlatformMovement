@@ -16,7 +16,6 @@ export default function (parentClass) {
       this._jumpStrength = 600;
       this._gravity = 0;
       this._maxFallSpeed = 1000;
-      this._defaultControls = true;
       this._slopeTolerance = 0.35;
       this._coyoteTime = 0.1;
       this._jumpBuffer = 0.1;
@@ -49,16 +48,6 @@ export default function (parentClass) {
       this._jumpInputReleased = false;
       this._stopInputThisTick = false;
       this._ignoreInput = false;
-      this._prevKbLeft = false;
-      this._prevKbRight = false;
-      this._prevKbJump = false;
-
-      // Direct key tracking (no Keyboard object needed)
-      this._keysDown = new Set();
-      this._onKeyDown = (e) => this._keysDown.add(e.key);
-      this._onKeyUp = (e) => this._keysDown.delete(e.key);
-      document.addEventListener("keydown", this._onKeyDown);
-      document.addEventListener("keyup", this._onKeyUp);
 
       // Runtime state — facing and previous-tick flags
       this._facing = 1;
@@ -73,6 +62,11 @@ export default function (parentClass) {
       // Freeze axis
       this._freezeX = false;
       this._freezeY = false;
+
+      // Knockback & simulated jump tracking
+      this._knockbackTimer = 0;
+      this._simulatedJumpHeld = false;
+      this._prevSimulatedJumpHeld = false;
 
       // Events
       this.events = {};
@@ -133,17 +127,16 @@ export default function (parentClass) {
           this._jumpStrength = properties[3];
           this._gravity = properties[4];
           this._maxFallSpeed = properties[5];
-          this._defaultControls = properties[6];
-          this._slopeTolerance = properties[7];
-          this._coyoteTime = properties[8];
-          this._jumpBuffer = properties[9];
-          this._maxJumps = properties[10];
-          this._wallSlide = properties[11];
-          this._wallSlideSpeed = properties[12];
-          this._wallJump = properties[13];
-          this._wallJumpStrength = properties[14];
-          this._variableJump = properties[15];
-          this._debugMode = properties[16];
+          this._slopeTolerance = properties[6];
+          this._coyoteTime = properties[7];
+          this._jumpBuffer = properties[8];
+          this._maxJumps = properties[9];
+          this._wallSlide = properties[10];
+          this._wallSlideSpeed = properties[11];
+          this._wallJump = properties[12];
+          this._wallJumpStrength = properties[13];
+          this._variableJump = properties[14];
+          this._debugMode = properties[15];
         }
 
         this._jumpsRemaining = this._maxJumps;
@@ -165,28 +158,12 @@ export default function (parentClass) {
 
       if (!this._enabled || !this._phys) return;
 
-      // ── DEFAULT CONTROLS ────────────────────────────────────────────────
-      if (this._defaultControls && !this._ignoreInput) {
-        const keys = this._keysDown;
-        const kbLeft = keys.has("ArrowLeft") || keys.has("a") || keys.has("A");
-        const kbRight = keys.has("ArrowRight") || keys.has("d") || keys.has("D");
-        const kbJump = keys.has(" ") || keys.has("ArrowUp") || keys.has("w") || keys.has("W");
-
-          if (kbLeft) this._inputX -= 1;
-          if (kbRight) this._inputX += 1;
-
-          // Edge detection for jump
-          if (kbJump && !this._prevKbJump) {
-            this._jumpInputPressed = true;
-          }
-          if (!kbJump && this._prevKbJump) {
-            this._jumpInputReleased = true;
-          }
-
-          this._prevKbLeft = kbLeft;
-          this._prevKbRight = kbRight;
-          this._prevKbJump = kbJump;
+      // ── SIMULATED JUMP AUTO-RELEASE ─────────────────────────────────────
+      if (this._prevSimulatedJumpHeld && !this._simulatedJumpHeld) {
+        this._jumpInputReleased = true;
       }
+      this._prevSimulatedJumpHeld = this._simulatedJumpHeld;
+      this._simulatedJumpHeld = false;
 
       // Clamp analogue input
       this._inputX = Math.max(-1, Math.min(1, this._inputX));
@@ -287,32 +264,43 @@ export default function (parentClass) {
         return;
       }
 
+      // ── KNOCKBACK TIMER ─────────────────────────────────────────────────
+      const inKnockback = this._knockbackTimer > 0;
+      if (inKnockback) {
+        this._knockbackTimer = Math.max(0, this._knockbackTimer - dt);
+        this._inputX = 0;
+        this._jumpInputPressed = false;
+        this._jumpInputReleased = false;
+      }
+
       // ── HORIZONTAL MOVEMENT ─────────────────────────────────────────────
       let vx = this._phys.getVelocityX();
 
-      if (this._inputX !== 0) {
-        // Accelerate toward target speed
-        const targetVx = this._inputX * this._maxSpeed;
-        const diff = targetVx - vx;
-        const step = this._acceleration * dt;
+      if (!inKnockback) {
+        if (this._inputX !== 0) {
+          // Accelerate toward target speed
+          const targetVx = this._inputX * this._maxSpeed;
+          const diff = targetVx - vx;
+          const step = this._acceleration * dt;
 
-        if (Math.abs(diff) <= step) {
-          vx = targetVx;
+          if (Math.abs(diff) <= step) {
+            vx = targetVx;
+          } else {
+            vx += Math.sign(diff) * step;
+          }
         } else {
-          vx += Math.sign(diff) * step;
+          // Decelerate toward zero
+          const step = this._deceleration * dt;
+          if (Math.abs(vx) <= step) {
+            vx = 0;
+          } else {
+            vx -= Math.sign(vx) * step;
+          }
         }
-      } else {
-        // Decelerate toward zero
-        const step = this._deceleration * dt;
-        if (Math.abs(vx) <= step) {
-          vx = 0;
-        } else {
-          vx -= Math.sign(vx) * step;
-        }
+
+        // Clamp to max speed
+        vx = Math.max(-this._maxSpeed, Math.min(this._maxSpeed, vx));
       }
-
-      // Clamp to max speed
-      vx = Math.max(-this._maxSpeed, Math.min(this._maxSpeed, vx));
 
       // ── FACING ──────────────────────────────────────────────────────────
       if (this._inputX !== 0) {
@@ -330,7 +318,7 @@ export default function (parentClass) {
 
       const wantJump = this._jumpInputPressed || this._jumpBufferTimer > 0;
 
-      if (wantJump) {
+      if (wantJump && !inKnockback) {
         // Wall jump check
         if (this._wallJump && !this._onFloor && (this._onWallLeft || this._onWallRight)) {
           // Wall jump
@@ -420,9 +408,202 @@ export default function (parentClass) {
     }
 
     _release() {
-      document.removeEventListener("keydown", this._onKeyDown);
-      document.removeEventListener("keyup", this._onKeyUp);
       super._release();
+    }
+
+    // ── PUBLIC SCRIPTING API ──────────────────────────────────────────────
+
+    // ── Configuration ─────────────────────────────────────────────────────
+
+    /** Set the maximum horizontal running speed (px/s). @param {number} speed */
+    setMaxSpeed(speed) { this._maxSpeed = speed; }
+
+    /** Set how quickly the character reaches max speed (px/s²). @param {number} accel */
+    setAcceleration(accel) { this._acceleration = accel; }
+
+    /** Set how quickly the character slows to a stop when no input is given (px/s²). @param {number} decel */
+    setDeceleration(decel) { this._deceleration = decel; }
+
+    /** Set the initial upward velocity applied when jumping (px/s). @param {number} strength */
+    setJumpStrength(strength) { this._jumpStrength = strength; }
+
+    /** Set the additional downward gravity applied each tick (px/s²). 0 = rely on Physics gravity only. @param {number} gravity */
+    setGravity(gravity) { this._gravity = gravity; }
+
+    /** Set the terminal falling speed the character cannot exceed (px/s). @param {number} speed */
+    setMaxFallSpeed(speed) { this._maxFallSpeed = speed; }
+
+    // ── Jumping ───────────────────────────────────────────────────────────
+
+    /** Restore all jumps as if the character just landed on the floor. */
+    resetJumps() { this._jumpsRemaining = this._maxJumps; }
+
+    /**
+     * Set what fraction of upward velocity is kept when the jump button is released early.
+     * @param {number} percent - 0–100. 0 = instant cut, 100 = no variable height. Default 50.
+     */
+    setJumpReleaseDamping(percent) {
+      this._jumpReleaseDamping = Math.max(0, Math.min(100, percent)) / 100;
+    }
+
+    /** Set how many times the character can jump before landing. 1 = normal, 2 = double jump, etc. @param {number} count */
+    setMaxJumps(count) { this._maxJumps = Math.max(0, Math.floor(count)); }
+
+    /** Enable or disable the ability to jump off walls. @param {boolean} enabled */
+    setWallJump(enabled) { this._wallJump = !!enabled; }
+
+    /** Enable or disable sliding down walls by pressing into them while airborne. @param {boolean} enabled */
+    setWallSlide(enabled) { this._wallSlide = !!enabled; }
+
+    // ── Movement ──────────────────────────────────────────────────────────
+
+    /**
+     * Enable or disable the entire behavior.
+     * Disabling clears all contact flags, timers, and pending input.
+     * @param {boolean} enabled
+     */
+    setEnabled(enabled) {
+      this._enabled = !!enabled;
+      if (!this._enabled) {
+        this._onFloor = false;
+        this._onCeiling = false;
+        this._onWallLeft = false;
+        this._onWallRight = false;
+        this._wasOnFloor = false;
+        this._isWallSliding = false;
+        this._jumpsRemaining = this._maxJumps;
+        this._coyoteTimer = 0;
+        this._jumpBufferTimer = 0;
+        this._airTime = 0;
+        this._inputX = 0;
+        this._jumpInputPressed = false;
+        this._jumpInputReleased = false;
+        this._stopInputThisTick = false;
+      }
+    }
+
+    /**
+     * Freeze or unfreeze a movement axis so the character cannot accelerate along it.
+     * @param {number} axis - 0 = Horizontal, 1 = Vertical, 2 = Both
+     * @param {boolean} freeze - true to freeze, false to unfreeze
+     */
+    setFreezeAxis(axis, freeze) {
+      const keys = ["horizontal", "vertical", "both"];
+      const key = keys[axis] || keys[2];
+      const val = !!freeze;
+      if (key === "horizontal" || key === "both") this._freezeX = val;
+      if (key === "vertical" || key === "both") this._freezeY = val;
+    }
+
+    /** When true, all input (default controls and SimulateControl) is ignored. @param {boolean} ignore */
+    setIgnoreInput(ignore) { this._ignoreInput = !!ignore; }
+
+    /** Directly set both Physics velocity components (px/s). @param {number} vx @param {number} vy */
+    setVector(vx, vy) {
+      if (this._phys) this._phys.setVelocity(vx, vy);
+    }
+
+    /** Directly set the horizontal Physics velocity, preserving vertical (px/s). @param {number} vx */
+    setVectorX(vx) {
+      if (this._phys) this._phys.setVelocity(vx, this._phys.getVelocityY());
+    }
+
+    /** Directly set the vertical Physics velocity, preserving horizontal (px/s). Negative = up. @param {number} vy */
+    setVectorY(vy) {
+      if (this._phys) this._phys.setVelocity(this._phys.getVelocityX(), vy);
+    }
+
+    /**
+     * Simulate a control input for this tick. Respects ignoreInput.
+     * Accepts a numeric index (0–4) or a string (case-insensitive, spaces/underscores ignored).
+     * If "jump" is passed every tick, the jump-release is automatically fired the tick after it stops.
+     * @param {number|string} control - 0/"left", 1/"right", 2/"jump", 3/"jumprelease", 4/"stop"
+     */
+    simulateControl(control) {
+      if (this._ignoreInput) return;
+      let key;
+      if (typeof control === "string") {
+        const normalized = control.toLowerCase().replace(/[\s_-]/g, "");
+        const stringMap = {
+          left: "left",
+          right: "right",
+          jump: "jump",
+          jumprelease: "jump_release",
+          stop: "stop",
+        };
+        key = stringMap[normalized] ?? "left";
+      } else {
+        const keys = ["left", "right", "jump", "jump_release", "stop"];
+        key = keys[control] ?? "left";
+      }
+      switch (key) {
+        case "left":
+          this._inputX -= 1;
+          break;
+        case "right":
+          this._inputX += 1;
+          break;
+        case "jump":
+          this._jumpInputPressed = true;
+          this._simulatedJumpHeld = true;
+          break;
+        case "jump_release":
+          this._jumpInputReleased = true;
+          break;
+        case "stop":
+          this._stopInputThisTick = true;
+          break;
+      }
+    }
+
+    /** Instantly zero both velocity components. */
+    stop() {
+      if (this._phys) this._phys.setVelocity(0, 0);
+    }
+
+    // ── Ability state getters ─────────────────────────────────────────────
+
+    /** Returns true if Coyote Time is enabled (duration > 0). */
+    get isCoyoteTimeEnabled() { return this._coyoteTime > 0; }
+
+    /** Returns true if Wall Sliding is enabled. */
+    get isWallSlidingEnabled() { return this._wallSlide; }
+
+    /** Returns true if Wall Jump is enabled. */
+    get isWallJumpEnabled() { return this._wallJump; }
+
+    /** Returns true if Variable Jump Height is enabled. */
+    get isVariableJumpEnabled() { return this._variableJump; }
+
+    // ── Knockback ─────────────────────────────────────────────────────────
+
+    /**
+     * Add an instantaneous velocity impulse to the current Physics velocity (px/s).
+     * The behavior's deceleration will naturally taper the extra velocity off.
+     * @param {number} vx - Horizontal impulse (positive = right)
+     * @param {number} vy - Vertical impulse (positive = down)
+     */
+    applyImpulse(vx, vy) {
+      if (this._phys) {
+        this._phys.setVelocity(
+          this._phys.getVelocityX() + vx,
+          this._phys.getVelocityY() + vy
+        );
+      }
+    }
+
+    /**
+     * Set the velocity and suppress all movement input for a fixed duration.
+     * Gravity, wall slide, and max fall speed still apply during knockback.
+     * @param {number} vx - Horizontal knockback velocity in px/s (positive = right)
+     * @param {number} vy - Vertical knockback velocity in px/s (positive = down)
+     * @param {number} duration - Seconds to suppress input
+     */
+    knockback(vx, vy, duration) {
+      if (this._phys) {
+        this._phys.setVelocity(vx, vy);
+        this._knockbackTimer = Math.max(0, duration);
+      }
     }
 
     _saveToJson() {
@@ -456,6 +637,7 @@ export default function (parentClass) {
         wallContactSide: this._wallContactSide,
         freezeX: this._freezeX,
         freezeY: this._freezeY,
+        knockbackTimer: this._knockbackTimer,
       };
     }
 
@@ -489,6 +671,7 @@ export default function (parentClass) {
       this._wallContactSide = o.wallContactSide;
       this._freezeX = o.freezeX ?? false;
       this._freezeY = o.freezeY ?? false;
+      this._knockbackTimer = o.knockbackTimer ?? 0;
     }
 
     _getDebuggerProperties() {
@@ -542,6 +725,7 @@ export default function (parentClass) {
             { name: "$Default controls", value: this._defaultControls },
             { name: "$Freeze X", value: this._freezeX },
             { name: "$Freeze Y", value: this._freezeY },
+            { name: "$Knockback timer", value: Math.round(this._knockbackTimer * 1000) / 1000 },
           ],
         },
         {

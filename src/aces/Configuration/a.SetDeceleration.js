@@ -16,5 +16,5 @@ export const config = {
 export const expose = true;
 
 export default function (decel) {
-  this._deceleration = decel;
+  this.setDeceleration(decel);
 }

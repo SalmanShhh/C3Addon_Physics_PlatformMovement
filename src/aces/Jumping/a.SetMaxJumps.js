@@ -16,5 +16,5 @@ export const config = {
 export const expose = true;
 
 export default function (count) {
-  this._maxJumps = Math.max(0, Math.floor(count));
+  this.setMaxJumps(count);
 }

@@ -1,6 +1,6 @@
 export const config = {
   returnType: "number",
-  description: "Which way the character faces: -1 = left, 1 = right.",
+  description: "Current facing as a signed number: -1 = left, 1 = right.",
   params: [],
 };
 

@@ -1,6 +1,6 @@
 export const config = {
   returnType: "number",
-  description: "Vertical speed. Positive = falling, negative = rising.",
+  description: "Current vertical Physics velocity (px/s). Positive = down.",
   params: [],
 };
 

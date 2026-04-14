@@ -1,6 +1,6 @@
 export const config = {
   returnType: "number",
-  description: "The current acceleration rate.",
+  description: "Current Acceleration setting (px/s²).",
   params: [],
 };
 

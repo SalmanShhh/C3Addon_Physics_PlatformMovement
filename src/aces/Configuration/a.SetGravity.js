@@ -16,5 +16,5 @@ export const config = {
 export const expose = true;
 
 export default function (gravity) {
-  this._gravity = gravity;
+  this.setGravity(gravity);
 }

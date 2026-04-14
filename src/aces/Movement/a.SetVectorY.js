@@ -16,7 +16,5 @@ export const config = {
 export const expose = true;
 
 export default function (vectorY) {
-  if (this._phys) {
-    this._phys.setVelocity(this._phys.getVelocityX(), vectorY);
-  }
+  this.setVectorY(vectorY);
 }

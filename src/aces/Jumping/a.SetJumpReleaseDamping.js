@@ -16,5 +16,5 @@ export const config = {
 export const expose = true;
 
 export default function (percent) {
-  this._jumpReleaseDamping = Math.max(0, Math.min(100, percent)) / 100;
+  this.setJumpReleaseDamping(percent);
 }

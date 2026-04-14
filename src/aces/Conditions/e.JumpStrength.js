@@ -1,6 +1,6 @@
 export const config = {
   returnType: "number",
-  description: "The current jump power.",
+  description: "Current Jump Strength setting.",
   params: [],
 };
 

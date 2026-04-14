@@ -16,5 +16,5 @@ export const config = {
 export const expose = true;
 
 export default function (speed) {
-  this._maxFallSpeed = speed;
+  this.setMaxFallSpeed(speed);
 }

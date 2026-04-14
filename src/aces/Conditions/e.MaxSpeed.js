@@ -1,6 +1,6 @@
 export const config = {
   returnType: "number",
-  description: "The current top speed limit.",
+  description: "Current Max Speed setting (px/s).",
   params: [],
 };
 

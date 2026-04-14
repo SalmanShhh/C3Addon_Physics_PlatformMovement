@@ -16,5 +16,5 @@ export const config = {
 export const expose = true;
 
 export default function (accel) {
-  this._acceleration = accel;
+  this.setAcceleration(accel);
 }

@@ -13,5 +13,10 @@
     "added": "",
     "changed": "",
     "fixed": ""
+  },
+  "1.2.0.0": {
+    "added": "Introduce a public scripting API  This change centralizes buff/stat logic for easier maintenance and enables direct use from C3 JS Scripting + Update Guide accordingly.",
+    "changed": "",
+    "fixed": ""
   }
 }

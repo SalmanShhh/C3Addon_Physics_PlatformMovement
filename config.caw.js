@@ -8,13 +8,13 @@ import _version from "./version.js";
 export const addonType = ADDON_TYPE.BEHAVIOR;
 export const type = PLUGIN_TYPE.OBJECT;
 export const id = "salmanshh_platformer_physics";
-export const name = "Platformer Physics";
+export const name = "Physics Platformer";
 export const version = _version;
 export const minConstructVersion = undefined;
 export const author = "SalmanShh";
 export const website = "https://www.construct.net";
 export const documentation = "https://www.construct.net";
-export const description = "Platform-style movement driven by the Physics engine — run, jump, wall-slide, and interact using the built-in Physics behavior.";
+export const description = "Physics-based platformer movement — run, jump, wall-slide, and interact using the built-in Physics behavior.";
 export const category = ADDON_CATEGORY.MOVEMENTS;
 
 export const hasDomside = false;
@@ -115,13 +115,6 @@ export const properties = [
     options: { initialValue: 1000 },
   },
   {
-    type: PROPERTY_TYPE.CHECK,
-    id: "defaultControls",
-    name: "Default Controls",
-    desc: "When true, the behavior reads Arrow Left/Right, A/D, and Space/Up/W from the runtime keyboard each tick.",
-    options: { initialValue: true },
-  },
-  {
     type: PROPERTY_TYPE.FLOAT,
     id: "slopeTolerance",
     name: "Slope Tolerance",
@@ -181,7 +174,7 @@ export const properties = [
     type: PROPERTY_TYPE.CHECK,
     id: "variableJumpHeight",
     name: "Variable Jump Height",
-    desc: "Releasing jump early dampens upward velocity, giving short/tall jump variation.",
+    desc: "Hold the jump button for a higher jump, release it early for a shorter one.",
     options: { initialValue: true },
   },
   {

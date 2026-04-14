@@ -1,11 +1,16 @@
 <img src="./src/icon.svg" width="100" /><br>
-# Platformer Physics
-<i>Platform-style movement driven by the Physics engine — run, jump, wall-slide, and interact using the built-in Physics behavior.</i> <br>
-### Version 1.1.0.1
+# Physics Platformer
+<i>Physics-based platformer movement — run, jump, wall-slide, and interact using the built-in Physics behavior.</i> <br>
+### Version 1.2.0.0
 
-[<img src="https://placehold.co/200x50/4493f8/FFF?text=Download&font=montserrat" width="200"/>](https://github.com/SalmanShhh/C3Addon_platformer_physics/releases/download/salmanshh_platformer_physics-1.1.0.1.c3addon/salmanshh_platformer_physics-1.1.0.1.c3addon)
+[<img src="https://placehold.co/200x50/4493f8/FFF?text=Download&font=montserrat" width="200"/>](https://github.com/SalmanShhh/C3Addon_platformer_physics/releases/download/salmanshh_platformer_physics-1.2.0.0.c3addon/salmanshh_platformer_physics-1.2.0.0.c3addon)
 <br>
 <sub> [See all releases](https://github.com/SalmanShhh/C3Addon_platformer_physics/releases) </sub> <br>
+
+#### What's New in 1.2.0.0
+- **Added:** Introduce a public scripting API  This change centralizes buff/stat logic for easier maintenance and enables direct use from C3 JS Scripting + Update Guide accordingly.
+
+<sub>[View full changelog](#changelog)</sub>
 
 ---
 <b><u>Author:</u></b> SalmanShh <br>
@@ -46,7 +51,6 @@ npm run dev
 | Jump Strength | Upward impulse magnitude applied when a jump executes (px/s). | float |
 | Gravity | Additional downward acceleration (px/s²) applied per tick on top of Physics world gravity. | float |
 | Max Fall Speed | Terminal velocity clamp (px/s downward). | float |
-| Default Controls | When true, the behavior reads Arrow Left/Right, A/D, and Space/Up/W from the runtime keyboard each tick. | check |
 | Slope Tolerance | Contact classification threshold as a fraction of half-height below center to count as floor. | float |
 | Coyote Time | Seconds after leaving a floor edge during which a jump is still allowed. | float |
 | Jump Buffer | Seconds a jump input is remembered before landing. | float |
@@ -55,7 +59,7 @@ npm run dev
 | Wall Slide Speed | Maximum downward speed (px/s) while wall sliding. | float |
 | Wall Jump | Allow jumping off a wall. | check |
 | Wall Jump Strength | Horizontal impulse component of a wall jump. | float |
-| Variable Jump Height | Releasing jump early dampens upward velocity, giving short/tall jump variation. | check |
+| Variable Jump Height | Hold the jump button for a higher jump, release it early for a shorter one. | check |
 | Debug Mode | Print contact classification and velocity state to the browser console each tick. | check |
 
 
@@ -74,7 +78,8 @@ npm run dev
 | Set max jumps | Set how many times the character can jump before landing. | Count             *(number)* <br> |
 | Set wall jump | Toggle the ability to jump off walls. | Enabled             *(boolean)* <br> |
 | Set wall slide | Toggle the ability to slide down walls. | Enabled             *(boolean)* <br> |
-| Set default controls | Enable or disable automatic keyboard input reading. | Enabled             *(boolean)* <br> |
+| Apply impulse | Add an instantaneous velocity impulse to the current Physics velocity. The behavior's deceleration will naturally taper it off. | Vector X             *(number)* <br>Vector Y             *(number)* <br> |
+| Apply knockback | Set the velocity and suppress all movement input for the given duration. Gravity, wall slide, and max fall speed still apply during knockback. | Vector X             *(number)* <br>Vector Y             *(number)* <br>Duration             *(number)* <br> |
 | Set enabled | Fully enable or disable the behavior. | Enabled             *(boolean)* <br> |
 | Set freeze axis | Lock an axis so the character cannot move on it. | Axis             *(combo)* <br>Freeze             *(boolean)* <br> |
 | Set ignore input | When true, all input is ignored until re-enabled. | Ignore             *(boolean)* <br> |
@@ -93,6 +98,7 @@ npm run dev
 | Compare speed | Compare the character's current speed to a value. | Comparison *(combo)* <br>Speed *(number)* <br> |
 | Compare vector X | Compare the current X velocity component against a value. | Comparison *(combo)* <br>Vector X *(number)* <br> |
 | Compare vector Y | Compare the current Y velocity component against a value. Positive = downward. | Comparison *(combo)* <br>Vector Y *(number)* <br> |
+| Is Movement Ability enabled | Check if a specific platformer ability is currently enabled. | Ability *(combo)* <br> |
 | Is axis frozen | Check if an axis is currently frozen. | Axis *(combo)* <br> |
 | Is enabled | Check if the behavior is currently active. |  |
 | Is facing right | Check if the character is facing right. Invert for facing left. |  |
@@ -116,24 +122,27 @@ npm run dev
 ## Expressions
 | Expression | Description | Return Type | Params
 | --- | --- | --- | --- |
-| Acceleration | The current acceleration rate. | number |  | 
+| Acceleration | Current Acceleration setting (px/s²). | number |  | 
 | AirTime | Seconds the character has been in the air. 0 on the ground. | number |  | 
-| Deceleration | The current deceleration rate. | number |  | 
-| FacingDirection | Which way the character faces: -1 = left, 1 = right. | number |  | 
-| Gravity | The current extra gravity pull. | number |  | 
+| Deceleration | Current Deceleration setting (px/s²). | number |  | 
+| FacingDirection | Current facing as a signed number: -1 = left, 1 = right. | number |  | 
+| Gravity | Current additional gravity setting (px/s²). | number |  | 
 | JumpsRemaining | How many jumps the character has left before landing. | number |  | 
-| JumpStrength | The current jump power. | number |  | 
-| MaxFallSpeed | The current maximum falling speed. | number |  | 
-| MaxSpeed | The current top speed limit. | number |  | 
+| JumpStrength | Current Jump Strength setting. | number |  | 
+| MaxFallSpeed | Current Max Fall Speed setting (px/s). | number |  | 
+| MaxSpeed | Current Max Speed setting (px/s). | number |  | 
 | MovingAngle | The angle the character is moving in degrees. | number |  | 
 | Speed | Current movement speed in px/s (magnitude of velocity vector). | number |  | 
 | VectorX | Current horizontal Physics velocity (px/s). Positive = right. | number |  | 
-| VectorY | Vertical speed. Positive = falling, negative = rising. | number |  | 
+| VectorY | Current vertical Physics velocity (px/s). Positive = down. | number |  | 
 | WallContactSide | Side of the most recent wall contact: -1 = left wall, 1 = right wall, 0 = no wall. | number |  | 
 
 
 ---
 ## Changelog
+
+**1.2.0.0**
+- **Added:** Introduce a public scripting API  This change centralizes buff/stat logic for easier maintenance and enables direct use from C3 JS Scripting + Update Guide accordingly.
 
 **1.1.0.1**
 

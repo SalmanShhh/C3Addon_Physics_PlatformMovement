@@ -1,6 +1,6 @@
 export const config = {
   returnType: "number",
-  description: "The current extra gravity pull.",
+  description: "Current additional gravity setting (px/s²).",
   params: [],
 };
 

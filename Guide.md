@@ -24,6 +24,7 @@
 16. [C3 Debugger](#16-c3-debugger)
 17. [Save & Load](#17-save--load)
 18. [Tips and Common Mistakes](#18-tips-and-common-mistakes)
+19. [Scripting Interface](#19-scripting-interface)
 
 ---
 
@@ -113,13 +114,6 @@ Set the behavior properties in the Properties Bar (see §3 for full list). The d
 ### Step 5 — First working example
 
 ```
-Event: On start of layout
-  // Nothing required — default controls read Arrow keys, A/D, Space/W automatically
-
-// Optional: disable default controls and use SimulateControl for custom input
-Event: On start of layout
-  Action: PlatformerPhysics -> Set default controls to false
-
 Event: Keyboard "Right arrow" is down
   Action: PlatformerPhysics -> Simulate control "Right"
 
@@ -128,6 +122,14 @@ Event: Keyboard "Left arrow" is down
 
 Event: Keyboard "Space" on pressed
   Action: PlatformerPhysics -> Simulate control "Jump"
+
+Event: Keyboard "Space" on released
+  Action: PlatformerPhysics -> Simulate control "Jump release"
+```
+
+### Step 6 — Verify
+
+Place your character sprite above a Physics-enabled static platform. Press Play. The character should run, jump, and land using Physics.
 
 Event: Keyboard "Space" on released
   Action: PlatformerPhysics -> Simulate control "Jump release"
@@ -250,7 +252,7 @@ The `FacingDirection` expression returns `-1` (left) or `1` (right).
 
 ### Basic jump
 
-With **Default Controls** enabled, pressing Space/Up/W triggers a jump automatically. For custom input:
+Feed jump input via `SimulateControl`:
 
 ```
 Event: Gamepad button 0 on pressed
@@ -543,8 +545,9 @@ Event: Every tick
 | **Set vector X** `value` | Directly set horizontal Physics velocity (px/s). Bypasses acceleration. Positive = right. |
 | **Set vector Y** `value` | Directly set vertical Physics velocity (px/s). Bypasses jump system. Negative = up. |
 | **Stop** | Zero both velocity components instantly. Movement can resume next tick. |
-| **Set default controls** `enabled` | Toggle automatic keyboard input reading (Arrow keys, A/D, Space/Up/W). |
-| **Set ignore input** `enabled` | When true, all input (default and simulated) is ignored. Gravity and physics continue. |
+| **Apply impulse** `vx, vy` | Add an instantaneous velocity impulse to the current Physics velocity (px/s). The behavior's deceleration naturally tapers it off. Does not suppress input. |
+| **Apply knockback** `vx, vy, duration` | Set velocity to `(vx, vy)` and suppress all movement input for `duration` seconds. Gravity, wall slide, and max fall speed still apply during knockback. |
+| **Set ignore input** `enabled` | When true, all simulated input is ignored. Gravity and physics continue. |
 | **Set enabled** `enabled` | Fully enable/disable the behavior. Disabled = stops modifying Physics velocity entirely. |
 | **Set freeze axis** `axis, freeze` | Lock Horizontal, Vertical, or Both axes. Frozen axes have velocity forced to zero every tick. |
 
@@ -585,6 +588,7 @@ Event: Every tick
 | **Is facing right** | True if facing right. Invert for facing left. Invertible. |
 | **Is enabled** | True if the behavior is active. Invertible. |
 | **Is ignoring input** | True if `SetIgnoreInput` was set to true. Invertible. |
+| **Is ability enabled** `ability` | True if the specified ability is currently active. Abilities: Coyote Time, Wall Sliding, Wall Jump, Variable Jump. Invertible. |
 | **Is wall sliding** | True if wall slide is active this tick. Invertible. |
 | **Compare speed** `op, value` | Compare velocity magnitude against a value. Operators: <, ≤, =, ≥, >. |
 | **Compare vector X** `op, value` | Compare horizontal velocity against a value. |
@@ -651,13 +655,10 @@ Trigger: PlatformerPhysics -> On facing changed
 
 ### Use Case 2 — Touch Controls (Mobile)
 
-**Scenario:** On-screen buttons control a mobile platformer character. Default controls are disabled.
+**Scenario:** On-screen buttons control a mobile platformer character using `SimulateControl`.
 
 #### Event sheet
 ```
-Event: On start of layout
-  Action: PlatformerPhysics -> Set default controls to false
-
 Event: Touch -> Is touching "BtnLeft"
   Action: PlatformerPhysics -> Simulate control "Left"
 
@@ -1041,7 +1042,7 @@ Platformer Physics fully supports Construct 3's savegame system. All runtime sta
 
 - Configuration overrides (max speed, acceleration, gravity, etc.)
 - Contact state (on floor, wall contact side, etc.)
-- Timer values (coyote timer, jump buffer, air time)
+- Timer values (coyote timer, jump buffer, air time, knockback timer)
 - Jump state (jumps remaining)
 - Input state (ignore input, enabled)
 - Facing direction
@@ -1064,8 +1065,6 @@ No extra events are needed — `_saveToJson` and `_loadFromJson` handle everythi
 
 - **Don't mix `SetVectorY` with jump inputs on the same tick.** `SetVectorY` runs after the jump impulse and will overwrite it.
 
-- **Default controls use DOM key events.** No Keyboard object is needed in the project. The behavior listens for `keydown`/`keyup` events on the document directly.
-
 - **Steep slopes may misclassify as walls.** If the character gets stuck on slopes steeper than ~45°, reduce **Slope Tolerance** (e.g. from 0.35 to 0.2) to be more permissive about what counts as floor.
 
 - **The Physics collision shape matters.** Use a convex capsule or rounded rectangle for the character. A simple box can catch on platform edges; a circle can slide off slopes. The collision shape directly affects contact point positions, which drive floor/wall/ceiling detection.
@@ -1073,3 +1072,213 @@ No extra events are needed — `_saveToJson` and `_loadFromJson` handle everythi
 - **`SimulateControl("Stop")` is different from the `Stop` action.** `SimulateControl("Stop")` sets a flag that zeroes velocity during the tick processing. The `Stop` action immediately zeroes velocity via `setVelocity(0, 0)`. Use `Stop` for instant halts; use `SimulateControl("Stop")` to integrate with the tick pipeline.
 
 - **Gravity property is additive.** It stacks on top of Physics world gravity. If you set both to non-zero values, the character falls faster than other Physics objects. Set one or the other to zero unless you deliberately want heavier-feeling characters.
+
+---
+
+## 19. Scripting Interface
+
+Platformer Physics exposes a full public method API callable from **C3 Script events** or any `.js` project file. Every action ACE has a matching method you can call directly on the behavior instance, no event sheet required.
+
+### Accessing the behavior from script
+
+```js
+// Get the behavior instance (name must match what the user assigned in the project)
+const beh = playerInst.behaviors.PlatformerPhysics;
+```
+
+> The key `PlatformerPhysics` is whatever the behavior is named in the project's Properties Bar. If the user renamed it, use that name instead.
+
+---
+
+### Configuration methods
+
+```js
+beh.setMaxSpeed(300);          // top running speed in px/s
+beh.setAcceleration(2000);     // acceleration in px/s²
+beh.setDeceleration(2000);     // deceleration in px/s²
+beh.setJumpStrength(700);      // jump impulse in px/s
+beh.setGravity(1200);          // extra downward gravity in px/s²
+beh.setMaxFallSpeed(1200);     // terminal falling speed in px/s
+```
+
+---
+
+### Jumping methods
+
+```js
+beh.resetJumps();               // restore all jumps as if just landed
+beh.setMaxJumps(2);             // 1 = single, 2 = double, etc.
+beh.setJumpReleaseDamping(30);  // 0–100: % of upward velocity kept on early release
+beh.setWallJump(true);          // enable wall jumping
+beh.setWallSlide(true);         // enable wall sliding
+```
+
+---
+
+### Movement methods
+
+```js
+beh.setEnabled(false);          // disable the entire behavior
+beh.setIgnoreInput(true);       // suppress SimulateControl input
+beh.setFreezeAxis(0, true);     // 0 = Horizontal, 1 = Vertical, 2 = Both
+beh.setVector(150, 0);          // set both velocity components (px/s)
+beh.setVectorX(150);            // set X only, Y unchanged
+beh.setVectorY(-500);           // set Y only, X unchanged (negative = up)
+beh.stop();                     // zero both velocity components instantly
+```
+
+#### Simulate controls from script
+
+You can pass either a **string** or a **numeric index**. Strings are case-insensitive and ignore spaces, hyphens, and underscores:
+
+| String (any case/format) | Index | Control |
+|---|---|---|
+| `"left"` | `0` | Left |
+| `"right"` | `1` | Right |
+| `"jump"` | `2` | Jump |
+| `"jumprelease"` / `"jump_release"` / `"Jump Release"` | `3` | Jump release |
+| `"stop"` | `4` | Stop |
+
+```js
+// String-based (recommended for scripts — readable)
+beh.simulateControl("right");        // move right
+beh.simulateControl("Jump");         // jump
+beh.simulateControl("Jump Release"); // early release
+beh.simulateControl("jump_release"); // same as above
+
+// Index-based (same as ACE combo values)
+beh.simulateControl(2);  // jump
+```
+
+> **Auto-release:** if you call `simulateControl("jump")` (or index `2`) every tick and then stop, the jump-release fires automatically on the next tick. This mirrors how keyboard edge-detection works and means variable jump height works correctly with scripted input.
+
+---
+
+### Knockback methods
+
+#### `applyImpulse(vx, vy)` - additive impulse
+
+Adds to the current Physics velocity. The behavior's deceleration naturally tapers it off. Use when you want the character to retain some control (e.g. hit while running):
+
+```js
+// Hit from the right — shove the character left
+beh.applyImpulse(-300, -100);
+```
+
+The character can still move and jump; the extra velocity bleeds off over the next few frames.
+
+#### `knockback(vx, vy, duration)` - full knockback with input lock
+
+Sets velocity directly and suppresses all horizontal movement input and jumping for `duration` seconds. Gravity, wall slide, and max fall speed still apply during the window — the character arcs naturally:
+
+```js
+// Hard knockback left-and-up, locks input for 0.5 seconds
+beh.knockback(-400, -200, 0.5);
+```
+
+After `duration` expires, normal control resumes automatically. No cleanup event needed.
+
+**Choosing between the two:**
+
+| | `applyImpulse` | `knockback` |
+|---|---|---|
+| Velocity effect | Additive | Replaces current velocity |
+| Input during effect | Normal (player retains control) | Suppressed for `duration` |
+| Use for | Light hits, recoil, small bumps | Enemy attacks, hazards, launch pads |
+
+---
+
+### Read-only state from script
+
+Expressions are not directly callable from script. Use these pattern to read state:
+
+```js
+// Via Physics behavior (always available)
+const vx = playerInst.behaviors.Physics.getVelocityX();
+const vy = playerInst.behaviors.Physics.getVelocityY();
+```
+
+For behavior-specific state, the following read-only getters are available directly:
+
+```js
+// Ability state — no () needed, these are get properties
+beh.isCoyoteTimeEnabled    // true when coyoteTime > 0
+beh.isWallSlidingEnabled   // true when wall sliding is on
+beh.isWallJumpEnabled      // true when wall jumping is on
+beh.isVariableJumpEnabled  // true when variable jump height is on
+```
+
+Other conditions (`IsOnFloor`, `IsJumping`, etc.) are exposed via `expose: true` on their ACE and callable from script if your C3 version supports behavior method access.
+
+---
+
+### Full script example - enemy hit response
+
+```js
+// In a Script event triggered when the player takes a hit:
+runtime.addEventListener("tick", () => {
+  // (Better practice: use a dedicated event sheet trigger)
+});
+
+// Typical usage in a Script event:
+function onPlayerHit(playerInst, hitDirection) {
+  const beh = playerInst.behaviors.PlatformerPhysics;
+
+  // Light hit — player keeps some control
+  if (hitStrength === "light") {
+    beh.applyImpulse(hitDirection * -200, -80);
+  }
+
+  // Heavy hit — full knockback, brief input lock
+  if (hitStrength === "heavy") {
+    beh.knockback(hitDirection * -450, -250, 0.4);
+  }
+}
+```
+
+### Full script example - dynamic difficulty scaling
+
+```js
+function applyDifficultySettings(playerInst, difficulty) {
+  const beh = playerInst.behaviors.PlatformerPhysics;
+  if (difficulty === "easy") {
+    beh.setMaxSpeed(220);
+    beh.setAcceleration(2000);
+    beh.setJumpStrength(650);
+    beh.setMaxJumps(2);
+  } else if (difficulty === "hard") {
+    beh.setMaxSpeed(180);
+    beh.setAcceleration(1200);
+    beh.setJumpStrength(560);
+    beh.setMaxJumps(1);
+  }
+}
+```
+
+### Full script example - AI controller
+
+```js
+// Every tick: drive AI enemy using simulateControl
+function tickEnemy(enemyInst, targetX) {
+  const beh = enemyInst.behaviors.PlatformerPhysics;
+  const dx  = targetX - enemyInst.x;
+
+  if (dx > 10)       beh.simulateControl("right");
+  else if (dx < -10) beh.simulateControl("left");
+
+  // Jump over walls
+  if (enemyInst.behaviors.PlatformerPhysics._onWallLeft ||
+      enemyInst.behaviors.PlatformerPhysics._onWallRight) {
+    beh.simulateControl("jump");  // auto-releases next tick
+  }
+}
+```
+
+---
+
+### Gotchas
+
+- **`_phys` may be null on the very first tick.** All public methods guard against this internally. Calls before the first `_tick` completes are safe — they simply do nothing.
+- **`setVector` bypasses `setIgnoreInput`.** Setting `IgnoreInput = true` blocks `simulateControl` and keyboard input, but direct calls like `setVector`, `applyImpulse`, and `knockback` still apply. This is intentional: code-driven overrides should not be blocked by the input suppression flag.
+- **`knockback` resets on save/load.** The `knockbackTimer` is saved to JSON, so a knockback mid-flight survives a load correctly.
+- **`simulateControl` accepts strings or indexes.** From script, pass a readable string like `"jump"` or `"Jump Release"` — spaces, underscores, and hyphens are ignored when matching. Numeric indexes (0–4) still work and are what the ACE combo dropdown passes internally.

@@ -499,7 +499,7 @@ export default function (parentClass) {
     setIgnoreInput(ignore) { this._ignoreInput = !!ignore; }
 
     /** Directly set both Physics velocity components (px/s). @param {number} vx @param {number} vy */
-    setVector(vx, vy) {
+    setVelocity(vx, vy) {
       if (this._phys) this._phys.setVelocity(vx, vy);
     }
 
@@ -614,7 +614,6 @@ export default function (parentClass) {
         jumpStrength: this._jumpStrength,
         gravity: this._gravity,
         maxFallSpeed: this._maxFallSpeed,
-        defaultControls: this._defaultControls,
         slopeTolerance: this._slopeTolerance,
         coyoteTime: this._coyoteTime,
         jumpBuffer: this._jumpBuffer,
@@ -625,6 +624,7 @@ export default function (parentClass) {
         wallJumpStrength: this._wallJumpStrength,
         variableJump: this._variableJump,
         jumpReleaseDamping: this._jumpReleaseDamping,
+        debugMode: this._debugMode,
         onFloor: this._onFloor,
         jumpsRemaining: this._jumpsRemaining,
         coyoteTimer: this._coyoteTimer,
@@ -648,17 +648,17 @@ export default function (parentClass) {
       this._jumpStrength = o.jumpStrength;
       this._gravity = o.gravity;
       this._maxFallSpeed = o.maxFallSpeed;
-      this._defaultControls = o.defaultControls;
-      this._slopeTolerance = o.slopeTolerance;
-      this._coyoteTime = o.coyoteTime;
-      this._jumpBuffer = o.jumpBuffer;
+      this._slopeTolerance = o.slopeTolerance ?? 0.35;
+      this._coyoteTime = o.coyoteTime ?? 0.1;
+      this._jumpBuffer = o.jumpBuffer ?? 0.1;
       this._maxJumps = o.maxJumps;
       this._wallSlide = o.wallSlide;
-      this._wallSlideSpeed = o.wallSlideSpeed;
+      this._wallSlideSpeed = o.wallSlideSpeed ?? 80;
       this._wallJump = o.wallJump;
-      this._wallJumpStrength = o.wallJumpStrength;
+      this._wallJumpStrength = o.wallJumpStrength ?? 450;
       this._variableJump = o.variableJump;
       this._jumpReleaseDamping = o.jumpReleaseDamping ?? 0.5;
+      this._debugMode = o.debugMode ?? false;
       this._onFloor = o.onFloor;
       this._jumpsRemaining = o.jumpsRemaining;
       this._coyoteTimer = o.coyoteTimer;
@@ -672,70 +672,45 @@ export default function (parentClass) {
       this._freezeX = o.freezeX ?? false;
       this._freezeY = o.freezeY ?? false;
       this._knockbackTimer = o.knockbackTimer ?? 0;
+
+      // Re-locate Physics sibling — live references cannot be serialized
+      for (const b of Object.values(this.instance.behaviors)) {
+        if (b.behaviorType && b.behaviorType.name === "Physics") {
+          this._phys = b;
+          break;
+        }
+      }
+      // Prevent the init guard from overwriting loaded config on the first tick
+      this._initialized = true;
     }
 
     _getDebuggerProperties() {
       const vx = this._phys ? this._phys.getVelocity()[0] : 0;
       const vy = this._phys ? this._phys.getVelocity()[1] : 0;
-      const speed = Math.sqrt(vx * vx + vy * vy);
+
+      let animMode;
+      if (!this._enabled)         animMode = "Disabled";
+      else if (this._isWallSliding) animMode = "Wall sliding";
+      else if (this._onFloor)     animMode = "On floor";
+      else if (vy < 0)            animMode = "Jumping";
+      else                        animMode = "Falling";
 
       return [
         {
-          title: "$Platformer Physics",
+          title: `$${this.behaviorType.name}`,
           properties: [
-            { name: "$Enabled", value: this._enabled },
-            { name: "$On floor", value: this._onFloor },
-            { name: "$On ceiling", value: this._onCeiling },
-            { name: "$On wall (L)", value: this._onWallLeft },
-            { name: "$On wall (R)", value: this._onWallRight },
-            { name: "$Wall sliding", value: this._isWallSliding },
-            { name: "$Facing", value: this._facing === 1 ? "Right" : "Left" },
-          ],
-        },
-        {
-          title: "$Velocity",
-          properties: [
-            { name: "$Speed", value: Math.round(speed * 100) / 100 },
-            { name: "$Vector X", value: Math.round(vx * 100) / 100 },
-            { name: "$Vector Y", value: Math.round(vy * 100) / 100 },
-            { name: "$Max speed", value: this._maxSpeed },
-            { name: "$Max fall speed", value: this._maxFallSpeed },
-          ],
-        },
-        {
-          title: "$Jumping",
-          properties: [
-            { name: "$Jump strength", value: this._jumpStrength },
+            { name: "$Vector X",        value: Math.round(vx * 100) / 100 },
+            { name: "$Vector Y",        value: Math.round(vy * 100) / 100 },
+            { name: "$Max speed",       value: this._maxSpeed },
+            { name: "$Acceleration",    value: this._acceleration },
+            { name: "$Deceleration",    value: this._deceleration },
+            { name: "$Jump strength",   value: this._jumpStrength },
+            { name: "$Gravity",         value: this._gravity },
+            { name: "$Max fall speed",  value: this._maxFallSpeed },
+            { name: "$Max jumps",       value: this._maxJumps },
             { name: "$Jumps remaining", value: this._jumpsRemaining },
-            { name: "$Max jumps", value: this._maxJumps },
-            { name: "$Coyote timer", value: Math.round(this._coyoteTimer * 1000) / 1000 },
-            { name: "$Jump buffer", value: Math.round(this._jumpBufferTimer * 1000) / 1000 },
-            { name: "$Air time", value: Math.round(this._airTime * 100) / 100 },
-            { name: "$Variable jump", value: this._variableJump },
-            { name: "$Release damping", value: Math.round(this._jumpReleaseDamping * 100) + "%" },
-          ],
-        },
-        {
-          title: "$Movement Config",
-          properties: [
-            { name: "$Acceleration", value: this._acceleration },
-            { name: "$Deceleration", value: this._deceleration },
-            { name: "$Gravity", value: this._gravity },
-            { name: "$Ignore input", value: this._ignoreInput },
-            { name: "$Default controls", value: this._defaultControls },
-            { name: "$Freeze X", value: this._freezeX },
-            { name: "$Freeze Y", value: this._freezeY },
-            { name: "$Knockback timer", value: Math.round(this._knockbackTimer * 1000) / 1000 },
-          ],
-        },
-        {
-          title: "$Wall Interaction",
-          properties: [
-            { name: "$Wall slide", value: this._wallSlide },
-            { name: "$Wall slide speed", value: this._wallSlideSpeed },
-            { name: "$Wall jump", value: this._wallJump },
-            { name: "$Wall jump strength", value: this._wallJumpStrength },
-            { name: "$Wall contact side", value: this._wallContactSide === -1 ? "Left" : this._wallContactSide === 1 ? "Right" : "None" },
+            { name: "$Animation mode",  value: animMode },
+            { name: "$Enabled",         value: this._enabled },
           ],
         },
       ];

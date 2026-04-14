@@ -1,14 +1,15 @@
 <img src="./src/icon.svg" width="100" /><br>
 # Physics Platformer
 <i>Physics-based platformer movement — run, jump, wall-slide, and interact using the built-in Physics behavior.</i> <br>
-### Version 1.2.0.0
+### Version 1.3.0.0
 
-[<img src="https://placehold.co/200x50/4493f8/FFF?text=Download&font=montserrat" width="200"/>](https://github.com/SalmanShhh/C3Addon_platformer_physics/releases/download/salmanshh_platformer_physics-1.2.0.0.c3addon/salmanshh_platformer_physics-1.2.0.0.c3addon)
+[<img src="https://placehold.co/200x50/4493f8/FFF?text=Download&font=montserrat" width="200"/>](https://github.com/SalmanShhh/C3Addon_platformer_physics/releases/download/salmanshh_platformer_physics-1.3.0.0.c3addon/salmanshh_platformer_physics-1.3.0.0.c3addon)
 <br>
 <sub> [See all releases](https://github.com/SalmanShhh/C3Addon_platformer_physics/releases) </sub> <br>
 
-#### What's New in 1.2.0.0
-- **Added:** Introduce a public scripting API  This change centralizes buff/stat logic for easier maintenance and enables direct use from C3 JS Scripting + Update Guide accordingly.
+#### What's New in 1.3.0.0
+- **Added:** - Add Scripting Support
+- **Added:** - Debugger support, shows same properties as the built-in Platform Movement Behavior.
 
 <sub>[View full changelog](#changelog)</sub>
 
@@ -140,6 +141,10 @@ npm run dev
 
 ---
 ## Changelog
+
+**1.3.0.0**
+- **Added:** - Add Scripting Support
+- **Added:** - Debugger support, shows same properties as the built-in Platform Movement Behavior.
 
 **1.2.0.0**
 - **Added:** Introduce a public scripting API  This change centralizes buff/stat logic for easier maintenance and enables direct use from C3 JS Scripting + Update Guide accordingly.

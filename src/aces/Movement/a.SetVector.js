@@ -23,5 +23,5 @@ export const config = {
 export const expose = true;
 
 export default function (vectorX, vectorY) {
-  this.setVector(vectorX, vectorY);
+  this.setVelocity(vectorX, vectorY);
 }

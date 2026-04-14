@@ -18,5 +18,10 @@
     "added": "Introduce a public scripting API  This change centralizes buff/stat logic for easier maintenance and enables direct use from C3 JS Scripting + Update Guide accordingly.",
     "changed": "",
     "fixed": ""
+  },
+  "1.3.0.0": {
+    "added": "- Add Scripting Support \n- Debugger support, shows same properties as the built-in Platform Movement Behavior.",
+    "changed": "",
+    "fixed": ""
   }
 }

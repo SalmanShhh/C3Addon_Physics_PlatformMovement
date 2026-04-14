@@ -1121,7 +1121,7 @@ beh.setWallSlide(true);         // enable wall sliding
 beh.setEnabled(false);          // disable the entire behavior
 beh.setIgnoreInput(true);       // suppress SimulateControl input
 beh.setFreezeAxis(0, true);     // 0 = Horizontal, 1 = Vertical, 2 = Both
-beh.setVector(150, 0);          // set both velocity components (px/s)
+beh.setVelocity(150, 0);          // set both velocity components (px/s)
 beh.setVectorX(150);            // set X only, Y unchanged
 beh.setVectorY(-500);           // set Y only, X unchanged (negative = up)
 beh.stop();                     // zero both velocity components instantly

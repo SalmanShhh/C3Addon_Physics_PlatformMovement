@@ -6,7 +6,7 @@ export const config = {
     {
       id: "control",
       name: "Control",
-      desc: "Which control to simulate. Left/Right: hold every tick while moving. Jump: press on the frame the jump button is pressed. Jump release: press on the frame the jump button is released. Stop: instantly zero velocity.",
+      desc: "Which control to simulate. Left/Right: hold every tick while moving. Jump: press on the frame the jump button is pressed. (if 'Variable Jumping) Jump release: press on the frame the jump button is released. Stop: instantly zero velocity.",
       type: "combo",
       initialValue: "left",
       items: [

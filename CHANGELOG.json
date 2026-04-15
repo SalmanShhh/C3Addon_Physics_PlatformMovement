@@ -23,5 +23,10 @@
     "added": "- Add Scripting Support \n- Debugger support, shows same properties as the built-in Platform Movement Behavior.",
     "changed": "",
     "fixed": ""
+  },
+  "1.4.0.0": {
+    "added": "- Adds animation-mode.\n- knockback conditions/expressions.\n- improve robustness of floor/wall detection across collision shapes.\n- Debugger properties are editable.\n- ACE to overwrite whether character is \"on the Floor\" (Grounded)",
+    "changed": "",
+    "fixed": ""
   }
 }

@@ -1,15 +1,18 @@
 <img src="./src/icon.svg" width="100" /><br>
 # Physics Platformer
 <i>Physics-based platformer movement — run, jump, wall-slide, and interact using the built-in Physics behavior.</i> <br>
-### Version 1.3.0.0
+### Version 1.4.0.0
 
-[<img src="https://placehold.co/200x50/4493f8/FFF?text=Download&font=montserrat" width="200"/>](https://github.com/SalmanShhh/C3Addon_platformer_physics/releases/download/salmanshh_platformer_physics-1.3.0.0.c3addon/salmanshh_platformer_physics-1.3.0.0.c3addon)
+[<img src="https://placehold.co/200x50/4493f8/FFF?text=Download&font=montserrat" width="200"/>](https://github.com/SalmanShhh/C3Addon_platformer_physics/releases/download/salmanshh_platformer_physics-1.4.0.0.c3addon/salmanshh_platformer_physics-1.4.0.0.c3addon)
 <br>
 <sub> [See all releases](https://github.com/SalmanShhh/C3Addon_platformer_physics/releases) </sub> <br>
 
-#### What's New in 1.3.0.0
-- **Added:** - Add Scripting Support
-- **Added:** - Debugger support, shows same properties as the built-in Platform Movement Behavior.
+#### What's New in 1.4.0.0
+- **Added:** - Adds animation-mode.
+- **Added:** - knockback conditions/expressions.
+- **Added:** - improve robustness of floor/wall detection across collision shapes.
+- **Added:** - Debugger properties are editable.
+- **Added:** - ACE to overwrite whether character is "on the Floor" (Grounded)
 
 <sub>[View full changelog](#changelog)</sub>
 
@@ -84,10 +87,11 @@ npm run dev
 | Set enabled | Fully enable or disable the behavior. | Enabled             *(boolean)* <br> |
 | Set freeze axis | Lock an axis so the character cannot move on it. | Axis             *(combo)* <br>Freeze             *(boolean)* <br> |
 | Set ignore input | When true, all input is ignored until re-enabled. | Ignore             *(boolean)* <br> |
+| Set on floor | Override the floor contact state for this tick. Useful for moving platforms or custom collision logic. Setting true also resets jumps remaining and clears coyote/air timers as if the character just landed. | On floor             *(boolean)* <br> |
 | Set vector | Set horizontal and vertical speed in px/s. | Vector X             *(number)* <br>Vector Y             *(number)* <br> |
 | Set vector X | Directly set the horizontal Physics velocity (px/s). | Vector X             *(number)* <br> |
 | Set vector Y | Directly set the vertical Physics velocity (px/s). | Vector Y             *(number)* <br> |
-| Simulate control | Simulate pressing or releasing a movement control this tick. | Control             *(combo)* <br> |
+| Simulate control | Tell the behavior to act as if the player pressed a movement key this tick. Use 'Left' and 'Right' every tick the button is held. Use 'Jump' on the frame the button is pressed and 'Jump release' on the frame it is released. | Control             *(combo)* <br> |
 | Stop | Instantly stop all movement. |  |
 
 
@@ -100,11 +104,13 @@ npm run dev
 | Compare vector X | Compare the current X velocity component against a value. | Comparison *(combo)* <br>Vector X *(number)* <br> |
 | Compare vector Y | Compare the current Y velocity component against a value. Positive = downward. | Comparison *(combo)* <br>Vector Y *(number)* <br> |
 | Is Movement Ability enabled | Check if a specific platformer ability is currently enabled. | Ability *(combo)* <br> |
+| Compare animation mode | Check the current animation mode. | Mode *(combo)* <br> |
 | Is axis frozen | Check if an axis is currently frozen. | Axis *(combo)* <br> |
 | Is enabled | Check if the behavior is currently active. |  |
 | Is facing right | Check if the character is facing right. Invert for facing left. |  |
 | Is falling | Check if the character is falling through the air. |  |
 | Is ignoring input | Check if input is currently being ignored. |  |
+| Is in knockback | Check if the character is currently in a knockback state (input suppressed by a knockback call). |  |
 | Is jumping | Check if the character is currently moving upward from a jump. |  |
 | Is moving | Check if the character is moving at all. |  |
 | Is on ceiling | Check if the character is touching a ceiling. |  |
@@ -125,6 +131,7 @@ npm run dev
 | --- | --- | --- | --- |
 | Acceleration | Current Acceleration setting (px/s²). | number |  | 
 | AirTime | Seconds the character has been in the air. 0 on the ground. | number |  | 
+| AnimMode | Current animation mode string: "Idle", "Moving", "Jumping", "Falling", "Wall sliding", or "Disabled". | string |  | 
 | Deceleration | Current Deceleration setting (px/s²). | number |  | 
 | FacingDirection | Current facing as a signed number: -1 = left, 1 = right. | number |  | 
 | Gravity | Current additional gravity setting (px/s²). | number |  | 
@@ -141,6 +148,13 @@ npm run dev
 
 ---
 ## Changelog
+
+**1.4.0.0**
+- **Added:** - Adds animation-mode.
+- **Added:** - knockback conditions/expressions.
+- **Added:** - improve robustness of floor/wall detection across collision shapes.
+- **Added:** - Debugger properties are editable.
+- **Added:** - ACE to overwrite whether character is "on the Floor" (Grounded)
 
 **1.3.0.0**
 - **Added:** - Add Scripting Support

@@ -54,7 +54,7 @@ Platformer Physics replaces the kinematic solver with the Physics engine while p
 
 | Concept | What it means |
 |---|---|
-| **Physics sibling** | The built-in Physics behavior on the same object. Platformer Physics finds it automatically via `behaviorType.name === "Physics"`. |
+| **Physics sibling** | The built-in Physics behavior on the same object. Platformer Physics accesses it directly via `this.instance.behaviors.Physics`, using C3's standard behavior key lookup. |
 | **Contact classification** | Each Physics contact point is classified as floor, ceiling, or wall based on its position relative to the instance center. |
 | **Acceleration model** | Horizontal speed ramps toward Max Speed by Acceleration per second, and decays toward zero by Deceleration per second — matching the built-in Platform behavior exactly. |
 | **Coyote time** | A grace window after leaving a ledge during which the character can still jump. |
@@ -107,6 +107,44 @@ Set these Physics behavior properties for platformer-feel:
 | Density | `0.1 – 0.5` | Tune how much the character pushes Physics objects |
 | Is Immovable | `No` | Character must be movable for interaction to work |
 
+### Physics setup for Wall Slide & Wall Jump
+
+Wall detection works by reading contact point positions from the Physics body. For reliable wall contacts your character needs a **tall, narrow collision shape** — ideally a rectangle or capsule that is clearly taller than it is wide.
+
+Key Physics properties for wall abilities:
+
+| Physics Property | Required Value | Why |
+|---|---|---|
+| Friction | `0` | Non-zero friction causes sticky wall contacts and erratic wall-slide speeds |
+| Prevent Rotation | `Yes` | A spinning body produces contacts on all sides simultaneously, confusing wall detection |
+| Linear Damping | `0` | Damping slows the wall-slide speed in ways the Wall Slide Speed property cannot compensate for |
+
+> **Collision shape tip:** A box or capsule that closely matches the visible sprite gives the cleanest wall contacts. A circle will almost never produce side contacts — wall slide and wall jump will not trigger.
+
+### Physics setup for Coyote Time & Jump Buffer
+
+These features are purely timer-based inside the behavior — no special Physics setup is required. However, for the coyote timer to fire correctly the Physics body must **not** be permanently contacting the floor. Check:
+
+- **Linear Damping = 0** — non-zero damping pins the body to surfaces and prevents the `OnFallenOff` trigger from firing when the character walks off a ledge
+- **Friction = 0** — friction between the character and a moving platform can cause unintended sticky contacts that keep `IsOnFloor` true after the character has left
+
+### Physics setup for Gravity
+
+Platformer Physics applies its own downward acceleration every tick **on top of** the Physics world gravity. If you leave both at their defaults the character falls twice as fast as everything else. Pick one approach and set the other to zero:
+
+| Approach | PlatformerPhysics `Gravity` | Physics world gravity | Result |
+|---|---|---|---|
+| Physics gravity only | `0` | `10` (default) | Character falls at same rate as all other Physics objects |
+| PlatformerPhysics gravity only | e.g. `1500` | `0` | Platformer-style gravity; other Physics objects are weightless unless they set their own |
+| Combined | non-zero | non-zero | Character falls faster than other objects — use for a heavy-feel character |
+
+To zero out Physics world gravity at runtime:
+```
+Event: On start of layout
+  Action: Physics -> Set world gravity to 0
+  Action: PlatformerPhysics -> Set gravity to 1500
+```
+
 ### Step 4 — Configure Platformer Physics properties
 
 Set the behavior properties in the Properties Bar (see §3 for full list). The defaults are tuned for a standard platformer feel.
@@ -131,14 +169,6 @@ Event: Keyboard "Space" on released
 
 Place your character sprite above a Physics-enabled static platform. Press Play. The character should run, jump, and land using Physics.
 
-Event: Keyboard "Space" on released
-  Action: PlatformerPhysics -> Simulate control "Jump release"
-```
-
-### Step 6 — Verify
-
-Place your character sprite above a Physics-enabled static platform. Press Play. The character should run, jump, and land using Physics. No Keyboard object is required — default controls use DOM key events directly.
-
 ---
 
 ## 3. Behavior Properties
@@ -153,8 +183,7 @@ Configure these in the Properties Bar when the object is selected.
 | **Jump Strength** | Float | `600` | Upward impulse magnitude applied when a jump executes (px/s). |
 | **Gravity** | Float | `0` | Additional downward acceleration (px/s²) on top of Physics world gravity. |
 | **Max Fall Speed** | Float | `1000` | Terminal velocity clamp (px/s downward). |
-| **Default Controls** | Checkbox | `On` | Read Arrow keys, A/D, and Space/Up/W automatically each tick via DOM key events (no Keyboard object needed). |
-| **Slope Tolerance** | Float | `0.35` | Fraction of half-height below center required for a contact to count as floor. Lower = more permissive slopes. |
+| **Slope Tolerance** | Float | `0.35` | Reserved floor-bias parameter. Not applied in the current normalized contact classifier. See §8 for details. |
 | **Coyote Time** | Float | `0.1` | Seconds after leaving a ledge during which a jump is still allowed. |
 | **Jump Buffer** | Float | `0.1` | Seconds a jump input is remembered before landing. |
 | **Max Jumps** | Integer | `1` | Total jumps per airborne period. 1 = single, 2 = double jump. |
@@ -180,7 +209,7 @@ Platformer Physics uses an **acceleration/deceleration model** identical to the 
 
 This means `Acceleration = 1500` and `MaxSpeed = 200` takes `200 / 1500 ≈ 0.13 seconds` to reach full speed — matching the built-in Platform behavior exactly.
 
-### SimulateControl
+### Simulate Control
 
 The primary way to feed input. Works identically to the built-in Platform behavior's `Simulate control` action:
 
@@ -333,7 +362,9 @@ Trigger: PlatformerPhysics -> On fallen off
 
 ### Wall Slide
 
-Enable **Wall Slide** in properties (or at runtime with `SetWallSlide`). When the player presses into a wall while airborne and falling, their fall speed is clamped to **Wall Slide Speed** (default 80 px/s):
+Enable **Wall Slide** in properties (or at runtime with `SetWallSlide`). When the player presses into a wall while airborne and falling, their fall speed is clamped to **Wall Slide Speed** (default 80 px/s).
+
+> **Ceiling veto:** Wall slide will not activate when `IsOnCeiling` is also true. This prevents the wall slide animation and speed clamp from firing incorrectly when the character grazes an angled ceiling whose contacts the classifier assigns as wall contacts.
 
 ```
 // Enable wall slide when player acquires the ability
@@ -412,37 +443,38 @@ Set either to `0` to disable.
 
 ### How it works
 
-The Physics behavior exposes contact point positions but not contact normals. Platformer Physics classifies each contact geometrically by comparing its position to the instance bounding box:
+The Physics behavior exposes contact point positions but not contact normals. Platformer Physics classifies each contact using **normalized half-extent comparison** — a shape-aware geometric test that works correctly for boxes, polygons, capsules, and circle shapes:
 
-| Classification | Rule |
-|---|---|
-| **Floor** | Contact Y > center Y + `SlopeTolerance × halfHeight` |
-| **Ceiling** | Contact Y < center Y − `SlopeTolerance × halfHeight` |
-| **Wall** | Contact within the floor/ceiling band AND `|contact X − center X| > 0.4 × halfWidth` |
+```
+normDx = |contact.x − center.x| / halfWidth
+normDy = |contact.y − center.y| / halfHeight
+
+if normDx ≥ normDy  →  wall contact  (left if contact.x < center.x, right otherwise)
+else                →  floor if contact.y > center.y, ceiling otherwise
+```
+
+Each contact point is assigned to **exactly one** category. This mutual-exclusion guarantee is critical for box and polygon shapes: the previous approach used independent threshold checks that allowed corner contacts to simultaneously set a floor flag *and* a wall flag. That caused wall slide to fail because `IsWallSliding` is guarded by `!IsOnFloor`.
+
+### Why normalization matters
+
+Without normalization, a wide, flat character would have contacts near the bottom that are slightly to the side — these would incorrectly classify as wall contacts. By normalizing by `halfWidth` and `halfHeight` separately, the algorithm compares each contact's proportional distance to each edge. A contact that is 90 % of the way to the bottom edge and only 40 % of the way to the side edge is unambiguously a floor contact regardless of the sprite's aspect ratio.
 
 ### Slope Tolerance
 
-The **Slope Tolerance** property (default `0.35`) controls how far below the instance center a contact must be to count as floor. Lower values are more permissive on slopes; higher values are stricter.
-
-```
-// For smoother slope walking (more contacts count as floor)
-Slope Tolerance = 0.2
-
-// For stricter floor detection (steeper slopes register as walls)
-Slope Tolerance = 0.5
-```
+The **Slope Tolerance** property is read from editor properties but is **not applied** in the current classification algorithm. It is reserved for a future floor-bias parameter. Changing it has no effect at runtime.
 
 ### Limitations
 
-- On steep slopes (> ~45°), contacts may be classified as walls instead of floors
-- If the Physics collision shape is much smaller than the sprite bounding box, misclassification can occur
-- A convex capsule-style Physics shape gives the best contact distribution
+- On steep slopes (> ~45 °), contacts may be classified as walls instead of floors — a fundamental limitation of position-based classification without access to contact normals
+- If the Physics collision shape is significantly smaller than the sprite bounding box, misclassification can occur
+- Circle collision shapes produce contacts only at the single outermost contact point, which is always geometrically unambiguous — circles give the cleanest floor/wall separation
 
 ### Best practices
 
 - Ensure the Physics collision shape closely matches the sprite bounding box
-- Use a capsule or rounded-rectangle Physics shape for the character
-- Test with **Debug Mode** enabled to see contact classifications in the console
+- Use a capsule or rounded-rectangle for the character body — the flat bottom surface produces reliable, clustered floor contacts
+- Avoid very thin collision polygons — edge contacts can flip between floor and wall classification unpredictably
+- Test with **Debug Mode** enabled to see live contact and velocity state in the console
 
 ---
 
@@ -550,6 +582,7 @@ Event: Every tick
 | **Set ignore input** `enabled` | When true, all simulated input is ignored. Gravity and physics continue. |
 | **Set enabled** `enabled` | Fully enable/disable the behavior. Disabled = stops modifying Physics velocity entirely. |
 | **Set freeze axis** `axis, freeze` | Lock Horizontal, Vertical, or Both axes. Frozen axes have velocity forced to zero every tick. |
+| **Set on floor** `value` | Override the floor contact flag for this tick. `true` also resets jumps remaining, coyote timer, and air time. Must be called every tick to sustain — Physics contacts reclassify the flag each frame. |
 
 ### Jumping
 
@@ -594,6 +627,8 @@ Event: Every tick
 | **Compare vector X** `op, value` | Compare horizontal velocity against a value. |
 | **Compare vector Y** `op, value` | Compare vertical velocity against a value. Positive = downward. |
 | **Is axis frozen** `axis` | True if the specified axis (Horizontal or Vertical) is currently frozen. Invertible. |
+| **Is animation mode** `mode` | True if the current animation mode matches the selected option: Idle, Moving, Jumping, Falling, Wall sliding, or Disabled. Invertible. |
+| **Is in knockback** | True if a knockback is currently active (input is suppressed). Invertible. |
 
 ---
 
@@ -615,6 +650,7 @@ Event: Every tick
 | `AirTime` | number | Seconds since last leaving floor contact. 0 while grounded. |
 | `FacingDirection` | number | -1 = left, 1 = right. |
 | `WallContactSide` | number | -1 = left wall, 1 = right wall, 0 = no wall contact. |
+| `AnimMode` | string | Current animation state: `"Idle"`, `"Moving"`, `"Jumping"`, `"Falling"`, `"Wall sliding"`, or `"Disabled"`. |
 
 ---
 
@@ -1009,7 +1045,34 @@ Event: Player -> Is NOT overlapping IceZone
 
 ## 16. C3 Debugger
 
-When **Debug Mode** is enabled, Platformer Physics logs a structured summary to the browser console each tick:
+Platformer Physics integrates with the **C3 built-in debugger**  and separately with the **browser console** when Debug Mode is enabled. Both surfaces show live state.
+
+### Debugger panel properties
+
+The behavior appears as a collapsible section in the C3 debugger panel. Most properties are **editable live** — click a value to change it without restarting the layout:
+
+| Property | Editable | Notes |
+|---|---|---|
+| `Enabled` | ✓ toggle | Calls `setEnabled()` — clears all state on disable |
+| `Vector X` | read-only | Current horizontal Physics velocity |
+| `Vector Y` | read-only | Current vertical Physics velocity |
+| `Max speed` | ✓ | px/s |
+| `Acceleration` | ✓ | px/s² |
+| `Deceleration` | ✓ | px/s² |
+| `Jump strength` | ✓ | px/s |
+| `Gravity` | ✓ | px/s², additive |
+| `Max fall speed` | ✓ | px/s |
+| `Max jumps` | ✓ | Integer ≥ 0 |
+| `Coyote time` | ✓ | Seconds ≥ 0 |
+| `Jump buffer` | ✓ | Seconds ≥ 0 |
+| `Variable jump` | ✓ toggle | |
+| `Jump release damping` | ✓ | 0–1 fraction (0 = instant cut, 1 = no variable height) |
+| `Jumps remaining` | read-only | Resets to Max jumps on landing |
+| `Animation mode` | read-only | Idle / Moving / Jumping / Falling / Wall sliding / Disabled |
+
+### Console output
+
+When **Debug Mode** is enabled in the behavior properties, a structured line is logged to the browser console each tick:
 
 ```
 [GroundForce] floor=1(2) wall=none ceil=false | vx=198.3 vy=-142.6 | jumps=0/2 coyote=0.000 buf=0.000 air=0.31s | slide=false facing=R
@@ -1032,7 +1095,7 @@ When **Debug Mode** is enabled, Platformer Physics logs a structured summary to 
 
 ### How to open the console
 
-Press **F12** in the browser to open Developer Tools, then switch to the **Console** tab. Filter by `[GroundForce]` to see only behavior output.
+Press **F12** in the browser to open Developer Tools, then switch to the **Console** tab. Filter by `[Physics Platformer]` to see only behavior output.
 
 ---
 
@@ -1065,7 +1128,7 @@ No extra events are needed — `_saveToJson` and `_loadFromJson` handle everythi
 
 - **Don't mix `SetVectorY` with jump inputs on the same tick.** `SetVectorY` runs after the jump impulse and will overwrite it.
 
-- **Steep slopes may misclassify as walls.** If the character gets stuck on slopes steeper than ~45°, reduce **Slope Tolerance** (e.g. from 0.35 to 0.2) to be more permissive about what counts as floor.
+- **Steep slopes may misclassify as walls.** The contact classifier uses normalized half-extent comparison — a contact is floor only if it is proportionally further below center (relative to object height) than it is to the side (relative to object width). If a sloped surface still misclassifies, the most effective fix is adjusting the Physics collision shape: a shape that is clearly taller than it is wide produces an unambiguous separation between floor and wall contacts. The **Slope Tolerance** property currently has no effect on classification.
 
 - **The Physics collision shape matters.** Use a convex capsule or rounded rectangle for the character. A simple box can catch on platform edges; a circle can slide off slopes. The collision shape directly affects contact point positions, which drive floor/wall/ceiling detection.
 
@@ -1119,6 +1182,7 @@ beh.setWallSlide(true);         // enable wall sliding
 
 ```js
 beh.setEnabled(false);          // disable the entire behavior
+beh.setOnFloor(true);           // override floor state this tick (call every tick to sustain)
 beh.setIgnoreInput(true);       // suppress SimulateControl input
 beh.setFreezeAxis(0, true);     // 0 = Horizontal, 1 = Vertical, 2 = Both
 beh.setVelocity(150, 0);          // set both velocity components (px/s)
@@ -1190,25 +1254,51 @@ After `duration` expires, normal control resumes automatically. No cleanup event
 
 ### Read-only state from script
 
-Expressions are not directly callable from script. Use these pattern to read state:
+Since every condition ACE has `expose: true`, C3 copies each condition function onto the behavior prototype as a **PascalCase method** callable directly from script:
 
 ```js
-// Via Physics behavior (always available)
-const vx = playerInst.behaviors.Physics.getVelocityX();
-const vy = playerInst.behaviors.Physics.getVelocityY();
+// Contact and movement checks — all return boolean
+beh.IsOnFloor()            // true if on floor this tick
+beh.IsOnCeiling()          // true if on ceiling this tick
+beh.IsOnWall(0)            // 0 = Left, 1 = Right, 2 = Either
+beh.IsJumping()            // true if airborne and moving up (VectorY < 0)
+beh.IsFalling()            // true if airborne and moving down (VectorY > 0)
+beh.IsWallSliding()        // true if sliding down a wall this tick
+beh.IsFacingRight()        // true if facing right
+beh.IsMoving()             // true if speed > 0.5 px/s
+beh.CanJump()              // true if a jump is currently possible
+beh.IsEnabled()            // true if the behavior is active
+beh.IsIgnoringInput()      // true if input suppression is on
+beh.IsAbilityEnabled(0)    // 0=CoyoteTime, 1=WallSliding, 2=WallJump, 3=VariableJump
+beh.IsAxisFrozen(0)        // 0=Horizontal, 1=Vertical
+beh.IsInKnockback()        // true if knockback input-lock is active
+beh.IsAnimMode(0)          // 0=Idle, 1=Moving, 2=Jumping, 3=Falling, 4=WallSliding, 5=Disabled
 ```
 
-For behavior-specific state, the following read-only getters are available directly:
+The following **property getters** (no parentheses) expose numeric state matching the event sheet expressions:
 
 ```js
-// Ability state — no () needed, these are get properties
+// Velocity
+beh.vectorX          // horizontal velocity (px/s) — positive = right
+beh.vectorY          // vertical velocity (px/s) — positive = down
+beh.speed            // velocity magnitude (px/s)
+
+// Movement state
+beh.jumpsRemaining   // jumps left in the current airborne period
+beh.airTime          // seconds since last leaving floor contact
+beh.facingDirection  // -1 = left, 1 = right
+beh.wallContactSide  // -1 = left wall, 1 = right wall, 0 = none
+
+// Ability flags
 beh.isCoyoteTimeEnabled    // true when coyoteTime > 0
-beh.isWallSlidingEnabled   // true when wall sliding is on
-beh.isWallJumpEnabled      // true when wall jumping is on
+beh.isWallSlidingEnabled   // true when wall sliding ability is on
+beh.isWallJumpEnabled      // true when wall jumping ability is on
 beh.isVariableJumpEnabled  // true when variable jump height is on
-```
 
-Other conditions (`IsOnFloor`, `IsJumping`, etc.) are exposed via `expose: true` on their ACE and callable from script if your C3 version supports behavior method access.
+// Animation state
+beh.animMode               // current animation mode string: "Idle", "Moving", "Jumping",
+                           //   "Falling", "Wall sliding", or "Disabled"
+```
 
 ---
 
@@ -1266,9 +1356,8 @@ function tickEnemy(enemyInst, targetX) {
   if (dx > 10)       beh.simulateControl("right");
   else if (dx < -10) beh.simulateControl("left");
 
-  // Jump over walls
-  if (enemyInst.behaviors.PlatformerPhysics._onWallLeft ||
-      enemyInst.behaviors.PlatformerPhysics._onWallRight) {
+  // Jump over walls — use exposed condition methods, not private fields
+  if (beh.IsOnWall(2)) {  // 2 = Either side
     beh.simulateControl("jump");  // auto-releases next tick
   }
 }
@@ -1279,6 +1368,6 @@ function tickEnemy(enemyInst, targetX) {
 ### Gotchas
 
 - **`_phys` may be null on the very first tick.** All public methods guard against this internally. Calls before the first `_tick` completes are safe — they simply do nothing.
-- **`setVector` bypasses `setIgnoreInput`.** Setting `IgnoreInput = true` blocks `simulateControl` and keyboard input, but direct calls like `setVector`, `applyImpulse`, and `knockback` still apply. This is intentional: code-driven overrides should not be blocked by the input suppression flag.
+- **Direct velocity calls bypass `setIgnoreInput`.** Setting `IgnoreInput = true` blocks `simulateControl` input, but direct calls like `setVelocity`, `setVectorX`, `setVectorY`, `applyImpulse`, and `knockback` still apply. This is intentional: code-driven overrides should not be blocked by the input suppression flag.
 - **`knockback` resets on save/load.** The `knockbackTimer` is saved to JSON, so a knockback mid-flight survives a load correctly.
 - **`simulateControl` accepts strings or indexes.** From script, pass a readable string like `"jump"` or `"Jump Release"` — spaces, underscores, and hyphens are ignored when matching. Numeric indexes (0–4) still work and are what the ACE combo dropdown passes internally.

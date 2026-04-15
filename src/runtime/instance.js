@@ -9,24 +9,25 @@ export default function (parentClass) {
       // Physics sibling reference
       this._phys = null;
 
-      // Config — mirrored from properties for runtime-override support
-      this._maxSpeed = 200;
-      this._acceleration = 1500;
-      this._deceleration = 1500;
-      this._jumpStrength = 600;
-      this._gravity = 0;
-      this._maxFallSpeed = 1000;
-      this._slopeTolerance = 0.35;
-      this._coyoteTime = 0.1;
-      this._jumpBuffer = 0.1;
-      this._maxJumps = 1;
-      this._wallSlide = false;
-      this._wallSlideSpeed = 80;
-      this._wallJump = false;
-      this._wallJumpStrength = 450;
-      this._variableJump = true;
+      // Config — read from editor properties
+      const properties = this._getInitProperties();
+      this._maxSpeed         = properties[0];
+      this._acceleration     = properties[1];
+      this._deceleration     = properties[2];
+      this._jumpStrength     = properties[3];
+      this._gravity          = properties[4];
+      this._maxFallSpeed     = properties[5];
+      this._slopeTolerance   = properties[6];
+      this._coyoteTime       = properties[7];
+      this._jumpBuffer       = properties[8];
+      this._maxJumps         = properties[9];
+      this._wallSlide        = properties[10];
+      this._wallSlideSpeed   = properties[11];
+      this._wallJump         = properties[12];
+      this._wallJumpStrength = properties[13];
+      this._variableJump     = properties[14];
       this._jumpReleaseDamping = 0.5;
-      this._debugMode = false;
+      this._debugMode        = properties[15];
 
       // Runtime state — contact classification
       this._onFloor = false;
@@ -37,7 +38,7 @@ export default function (parentClass) {
       this._wallContactSide = 0;
 
       // Runtime state — jumps and timers
-      this._jumpsRemaining = 1;
+      this._jumpsRemaining = this._maxJumps;
       this._coyoteTimer = 0;
       this._jumpBufferTimer = 0;
       this._airTime = 0;
@@ -54,10 +55,10 @@ export default function (parentClass) {
       this._wasOnFloor = false;
       this._wasFalling = false;
       this._isWallSliding = false;
+      this._justJumped = false;   // true on the tick a jump fires; prevents coyote timer starting
 
       // Lifecycle
       this._enabled = true;
-      this._initialized = false;
 
       // Freeze axis
       this._freezeX = false;
@@ -115,44 +116,20 @@ export default function (parentClass) {
     _tick() {
       const dt = this.instance.runtime.dt;
 
-      // ── INIT GUARD ──────────────────────────────────────────────────────
-      if (!this._initialized) {
-        this._initialized = true;
-
-        const properties = this._getInitProperties();
-        if (properties) {
-          this._maxSpeed = properties[0];
-          this._acceleration = properties[1];
-          this._deceleration = properties[2];
-          this._jumpStrength = properties[3];
-          this._gravity = properties[4];
-          this._maxFallSpeed = properties[5];
-          this._slopeTolerance = properties[6];
-          this._coyoteTime = properties[7];
-          this._jumpBuffer = properties[8];
-          this._maxJumps = properties[9];
-          this._wallSlide = properties[10];
-          this._wallSlideSpeed = properties[11];
-          this._wallJump = properties[12];
-          this._wallJumpStrength = properties[13];
-          this._variableJump = properties[14];
-          this._debugMode = properties[15];
-        }
-
-        this._jumpsRemaining = this._maxJumps;
-
-        // Locate Physics sibling
-        for (const b of Object.values(this.instance.behaviors)) {
-          if (b.behaviorType && b.behaviorType.name === "Physics") {
-            this._phys = b;
-            break;
+      // Locate Physics sibling on the first tick (this.instance not available in constructor).
+      if (!this._phys) {
+        this._phys = this.instance.behaviors["Physics"] ?? null;
+        if (!this._phys) {
+          for (const b of Object.values(this.instance.behaviors)) {
+            if (b.behaviorType && b.behaviorType.name === "Physics") {
+              this._phys = b;
+              break;
+            }
           }
         }
-
         if (!this._phys) {
-          console.warn("[GroundForce] Physics behavior not found on instance. Disabling.");
+          console.warn("[PlatformerPhysics] Physics behavior not found on instance. Disabling.");
           this._enabled = false;
-          return;
         }
       }
 
@@ -188,21 +165,37 @@ export default function (parentClass) {
         const dy = cy - instCY;
         const dx = cx - instCX;
 
-        // Floor: contact below center by slopeTolerance * halfHeight
-        if (dy > this._slopeTolerance * halfH) {
-          this._onFloor = true;
-          this._floorContactCount++;
-        }
-        // Ceiling: contact above center
-        else if (dy < -this._slopeTolerance * halfH) {
-          this._onCeiling = true;
-        }
-        // Wall: within floor/ceiling band and far enough out horizontally
-        else if (Math.abs(dx) > 0.4 * halfW) {
+        // Normalize deltas by the half-extents so that the comparison is
+        // aspect-ratio-aware and works for any collision shape (box, polygon,
+        // circle, capsule). A contact point is classified as whichever axis it
+        // is proportionally further from the center on.
+        //
+        // For circles/capsules, contact points sit exactly to the side or
+        // above/below, so normDx vs normDy is unambiguous.
+        //
+        // For boxes/polygons, Box2D places contacts at the corners of the
+        // touching face. The dual independent-if approach previously caused
+        // corner contacts to set BOTH _onWallLeft/_onWallRight AND _onFloor,
+        // which broke wall-slide detection (guarded by !this._onFloor).
+        // The normalized comparison assigns each contact point to exactly one
+        // category, fixing wall slide for all shapes.
+        const normDx = halfW > 0 ? Math.abs(dx) / halfW : 0;
+        const normDy = halfH > 0 ? Math.abs(dy) / halfH : 0;
+
+        if (normDx >= normDy) {
+          // Horizontal dominates → wall contact
           if (dx < 0) {
             this._onWallLeft = true;
           } else {
             this._onWallRight = true;
+          }
+        } else {
+          // Vertical dominates → floor or ceiling
+          if (dy > 0) {
+            this._onFloor = true;
+            this._floorContactCount++;
+          } else {
+            this._onCeiling = true;
           }
         }
       }
@@ -228,11 +221,12 @@ export default function (parentClass) {
         this._wasOnFloor = true;
       } else {
         this._coyoteTimer = Math.max(0, this._coyoteTimer - dt);
-        if (this._wasOnFloor && !this._jumpInputPressed) {
-          // Fallen off a ledge
+        if (this._wasOnFloor && !this._justJumped) {
+          // Fallen off a ledge (not a deliberate jump)
           this._coyoteTimer = this._coyoteTime;
           this._trigger("OnFallenOff");
         }
+        this._justJumped = false;  // clear after the floor→air transition check
         this._wasOnFloor = false;
       }
 
@@ -329,6 +323,7 @@ export default function (parentClass) {
           jumped = true;
           isWallJump = true;
           this._jumpBufferTimer = 0;
+          this._justJumped = true;
           this._trigger("OnWallJumped");
           this._trigger("OnJumped");
         }
@@ -338,6 +333,7 @@ export default function (parentClass) {
           this._jumpsRemaining = Math.max(0, this._jumpsRemaining - 1);
           currentVy = -this._jumpStrength;
           jumped = true;
+          this._justJumped = true;
           this._coyoteTimer = 0;
           this._jumpBufferTimer = 0;
           this._trigger("OnJumped");
@@ -364,7 +360,7 @@ export default function (parentClass) {
 
       // ── WALL SLIDE ──────────────────────────────────────────────────────
       this._isWallSliding = false;
-      if (this._wallSlide && !this._onFloor && currentVy > 0) {
+      if (this._wallSlide && !this._onFloor && !this._onCeiling && currentVy > 0) {
         const pressingIntoWall =
           (this._onWallLeft && this._inputX < 0) ||
           (this._onWallRight && this._inputX > 0);
@@ -495,6 +491,22 @@ export default function (parentClass) {
       if (key === "vertical" || key === "both") this._freezeY = val;
     }
 
+    /**
+     * Override the floor contact state for this tick.
+     * Setting true also resets jumps remaining and clears coyote/air timers as if the character just landed.
+     * Note: _onFloor is reclassified each tick from Physics contacts, so call every tick to sustain the override.
+     * @param {boolean} onFloor
+     */
+    setOnFloor(onFloor) {
+      this._onFloor = !!onFloor;
+      if (this._onFloor) {
+        this._jumpsRemaining = this._maxJumps;
+        this._coyoteTimer = 0;
+        this._airTime = 0;
+        this._wasOnFloor = true;
+      }
+    }
+
     /** When true, all input (default controls and SimulateControl) is ignored. @param {boolean} ignore */
     setIgnoreInput(ignore) { this._ignoreInput = !!ignore; }
 
@@ -544,7 +556,12 @@ export default function (parentClass) {
           this._inputX += 1;
           break;
         case "jump":
-          this._jumpInputPressed = true;
+          // Only register as a fresh press if the jump button was not already
+          // held last tick. This makes SimulateControl("Jump") safe to call
+          // every tick via a "key is down" event without firing multiple jumps.
+          if (!this._prevSimulatedJumpHeld) {
+            this._jumpInputPressed = true;
+          }
           this._simulatedJumpHeld = true;
           break;
         case "jump_release":
@@ -574,6 +591,43 @@ export default function (parentClass) {
 
     /** Returns true if Variable Jump Height is enabled. */
     get isVariableJumpEnabled() { return this._variableJump; }
+
+    // ── Read-only state getters ───────────────────────────────────────────
+    // These expose numeric/velocity state that expressions provide in the event sheet
+    // but are not reachable as simple properties from script.
+
+    /** Current horizontal Physics velocity (px/s). Positive = right. */
+    get vectorX() { return this._phys ? this._phys.getVelocityX() : 0; }
+
+    /** Current vertical Physics velocity (px/s). Positive = down. */
+    get vectorY() { return this._phys ? this._phys.getVelocityY() : 0; }
+
+    /** Current velocity magnitude (px/s). */
+    get speed() { const vx = this.vectorX; const vy = this.vectorY; return Math.sqrt(vx * vx + vy * vy); }
+
+    /** Jumps remaining in the current airborne period. Resets on landing. */
+    get jumpsRemaining() { return this._jumpsRemaining; }
+
+    /** Seconds since last leaving floor contact. 0 while grounded. */
+    get airTime() { return this._airTime; }
+
+    /** -1 = left, 1 = right. */
+    get facingDirection() { return this._facing; }
+
+    /** -1 = left wall, 1 = right wall, 0 = no wall contact this tick. */
+    get wallContactSide() { return this._wallContactSide; }
+
+    /** Current animation mode string: "Idle", "Moving", "Jumping", "Falling", "Wall sliding", or "Disabled". */
+    get animMode() {
+      if (!this._enabled) return "Disabled";
+      if (this._isWallSliding) return "Wall sliding";
+      const vx = this._phys ? this._phys.getVelocityX() : 0;
+      const vy = this._phys ? this._phys.getVelocityY() : 0;
+      if (this._onFloor && Math.abs(vx) > 0.5) return "Moving";
+      if (this._onFloor) return "Idle";
+      if (vy < 0) return "Jumping";
+      return "Falling";
+    }
 
     // ── Knockback ─────────────────────────────────────────────────────────
 
@@ -672,45 +726,34 @@ export default function (parentClass) {
       this._freezeX = o.freezeX ?? false;
       this._freezeY = o.freezeY ?? false;
       this._knockbackTimer = o.knockbackTimer ?? 0;
-
-      // Re-locate Physics sibling — live references cannot be serialized
-      for (const b of Object.values(this.instance.behaviors)) {
-        if (b.behaviorType && b.behaviorType.name === "Physics") {
-          this._phys = b;
-          break;
-        }
-      }
-      // Prevent the init guard from overwriting loaded config on the first tick
-      this._initialized = true;
     }
 
     _getDebuggerProperties() {
-      const vx = this._phys ? this._phys.getVelocity()[0] : 0;
-      const vy = this._phys ? this._phys.getVelocity()[1] : 0;
+      if (!this._phys) return [];
 
-      let animMode;
-      if (!this._enabled)         animMode = "Disabled";
-      else if (this._isWallSliding) animMode = "Wall sliding";
-      else if (this._onFloor)     animMode = "On floor";
-      else if (vy < 0)            animMode = "Jumping";
-      else                        animMode = "Falling";
+      const [vx, vy] = this._phys.getVelocity();
+      const animMode = this.animMode;
 
       return [
         {
-          title: `$${this.behaviorType.name}`,
+          title: `$${this.behaviorType?.name ?? "Physics Platformer"}`,
           properties: [
-            { name: "$Vector X",        value: Math.round(vx * 100) / 100 },
-            { name: "$Vector Y",        value: Math.round(vy * 100) / 100 },
-            { name: "$Max speed",       value: this._maxSpeed },
-            { name: "$Acceleration",    value: this._acceleration },
-            { name: "$Deceleration",    value: this._deceleration },
-            { name: "$Jump strength",   value: this._jumpStrength },
-            { name: "$Gravity",         value: this._gravity },
-            { name: "$Max fall speed",  value: this._maxFallSpeed },
-            { name: "$Max jumps",       value: this._maxJumps },
+            { name: "$Enabled",         value: this._enabled,        onedit: v => { this.setEnabled(!!v); } },
+            { name: "$Vector X",        value: vx },
+            { name: "$Vector Y",        value: vy },
+            { name: "$Max speed",       value: this._maxSpeed,       onedit: v => { this._maxSpeed       = +v; } },
+            { name: "$Acceleration",    value: this._acceleration,   onedit: v => { this._acceleration   = +v; } },
+            { name: "$Deceleration",    value: this._deceleration,   onedit: v => { this._deceleration   = +v; } },
+            { name: "$Jump strength",   value: this._jumpStrength,   onedit: v => { this._jumpStrength   = +v; } },
+            { name: "$Gravity",         value: this._gravity,        onedit: v => { this._gravity        = +v; } },
+            { name: "$Max fall speed",  value: this._maxFallSpeed,   onedit: v => { this._maxFallSpeed   = +v; } },
+            { name: "$Max jumps",       value: this._maxJumps,       onedit: v => { this._maxJumps = Math.max(0, Math.floor(+v)); } },
+            { name: "$Coyote time",     value: this._coyoteTime,     onedit: v => { this._coyoteTime     = Math.max(0, +v); } },
+            { name: "$Jump buffer",     value: this._jumpBuffer,     onedit: v => { this._jumpBuffer     = Math.max(0, +v); } },
+            { name: "$Variable jump",   value: this._variableJump,   onedit: v => { this._variableJump   = !!v; } },
+            { name: "$Jump release damping", value: this._jumpReleaseDamping, onedit: v => { this._jumpReleaseDamping = Math.max(0, Math.min(1, +v)); } },
             { name: "$Jumps remaining", value: this._jumpsRemaining },
             { name: "$Animation mode",  value: animMode },
-            { name: "$Enabled",         value: this._enabled },
           ],
         },
       ];

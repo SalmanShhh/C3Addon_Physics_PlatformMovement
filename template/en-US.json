@@ -272,6 +272,17 @@
               }
             }
           },
+          "SetOnFloor": {
+            "list-name": "Set on floor",
+            "display-text": "Set on floor to {0}",
+            "description": "Override the floor contact state for this tick. Useful for moving platforms or custom collision logic. Setting true also resets jumps remaining and clears coyote/air timers as if the character just landed.",
+            "params": {
+              "onFloor": {
+                "name": "On floor",
+                "desc": "True to force the character to be considered on the floor."
+              }
+            }
+          },
           "SetVector": {
             "list-name": "Set vector",
             "display-text": "Set vector to ({0}, {1})",
@@ -312,11 +323,11 @@
           "SimulateControl": {
             "list-name": "Simulate control",
             "display-text": "Simulate {0}",
-            "description": "Simulate pressing or releasing a movement control this tick.",
+            "description": "Tell the behavior to act as if the player pressed a movement key this tick. Use 'Left' and 'Right' every tick the button is held. Use 'Jump' on the frame the button is pressed and 'Jump release' on the frame it is released.",
             "params": {
               "control": {
                 "name": "Control",
-                "desc": "Control to simulate.",
+                "desc": "Which control to simulate. Left/Right: hold every tick while moving. Jump: press on the frame the jump button is pressed. Jump release: press on the frame the jump button is released. Stop: instantly zero velocity.",
                 "items": {
                   "left": "Left",
                   "right": "Right",
@@ -424,6 +435,25 @@
               }
             }
           },
+          "IsAnimMode": {
+            "list-name": "Compare animation mode",
+            "display-text": "Animation mode is {0}",
+            "description": "Check the current animation mode.",
+            "params": {
+              "mode": {
+                "name": "Mode",
+                "desc": "The animation mode to compare against.",
+                "items": {
+                  "idle": "Idle",
+                  "moving": "Moving",
+                  "jumping": "Jumping",
+                  "falling": "Falling",
+                  "wall_sliding": "Wall sliding",
+                  "disabled": "Disabled"
+                }
+              }
+            }
+          },
           "IsAxisFrozen": {
             "list-name": "Is axis frozen",
             "display-text": "Is {0} axis frozen",
@@ -461,6 +491,12 @@
             "list-name": "Is ignoring input",
             "display-text": "Is ignoring input",
             "description": "Check if input is currently being ignored.",
+            "params": {}
+          },
+          "IsInKnockback": {
+            "list-name": "Is in knockback",
+            "display-text": "Is in knockback",
+            "description": "Check if the character is currently in a knockback state (input suppressed by a knockback call).",
             "params": {}
           },
           "IsJumping": {
@@ -555,6 +591,11 @@
           "AirTime": {
             "translated-name": "AirTime",
             "description": "Seconds the character has been in the air. 0 on the ground.",
+            "params": {}
+          },
+          "AnimMode": {
+            "translated-name": "AnimMode",
+            "description": "Current animation mode string: \"Idle\", \"Moving\", \"Jumping\", \"Falling\", \"Wall sliding\", or \"Disabled\".",
             "params": {}
           },
           "Deceleration": {

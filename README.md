@@ -1,18 +1,14 @@
 <img src="./src/icon.svg" width="100" /><br>
 # Physics Platformer
 <i>Physics-based platformer movement — run, jump, wall-slide, and interact using the built-in Physics behavior.</i> <br>
-### Version 1.4.1.0
+### Version 1.4.2.0
 
-[<img src="https://placehold.co/200x50/4493f8/FFF?text=Download&font=montserrat" width="200"/>](https://github.com/SalmanShhh/C3Addon_platformer_physics/releases/download/salmanshh_platformer_physics-1.4.1.0.c3addon/salmanshh_platformer_physics-1.4.1.0.c3addon)
+[<img src="https://placehold.co/200x50/4493f8/FFF?text=Download&font=montserrat" width="200"/>](https://github.com/SalmanShhh/C3Addon_platformer_physics/releases/download/salmanshh_platformer_physics-1.4.2.0.c3addon/salmanshh_platformer_physics-1.4.2.0.c3addon)
 <br>
 <sub> [See all releases](https://github.com/SalmanShhh/C3Addon_platformer_physics/releases) </sub> <br>
 
-#### What's New in 1.4.1.0
-- **Added:** - Adds animation-mode.
-- **Added:** - knockback conditions/expressions.
-- **Added:** - improve robustness of floor/wall detection across collision shapes.
-- **Added:** - Debugger properties are editable.
-- **Added:** - ACE to overwrite whether character is "on the Floor" (Grounded)
+#### What's New in 1.4.2.0
+- **Changed:** Rename the knockback feature to a more general "driven move"
 
 <sub>[View full changelog](#changelog)</sub>
 
@@ -83,7 +79,7 @@ npm run dev
 | Set wall jump | Toggle the ability to jump off walls. | Enabled             *(boolean)* <br> |
 | Set wall slide | Toggle the ability to slide down walls. | Enabled             *(boolean)* <br> |
 | Apply impulse | Add an instantaneous velocity impulse to the current Physics velocity. The behavior's deceleration will naturally taper it off. | Vector X             *(number)* <br>Vector Y             *(number)* <br> |
-| Apply knockback | Set the velocity and suppress all movement input for the given duration. Gravity, wall slide, and max fall speed still apply during knockback. | Vector X             *(number)* <br>Vector Y             *(number)* <br>Duration             *(number)* <br> |
+| Set driven move | Temporarily drives the character at the given velocity, suppressing movement input for the duration. Use for dashes, knockback, launch pads, or any externally driven movement. Gravity, wall slide, and max fall speed still apply. | Vector X             *(number)* <br>Vector Y             *(number)* <br>Duration             *(number)* <br> |
 | Set enabled | Fully enable or disable the behavior. | Enabled             *(boolean)* <br> |
 | Set freeze axis | Lock an axis so the character cannot move on it. | Axis             *(combo)* <br>Freeze             *(boolean)* <br> |
 | Set ignore input | When true, all input is ignored until re-enabled. | Ignore             *(boolean)* <br> |
@@ -106,11 +102,11 @@ npm run dev
 | Is Movement Ability enabled | Check if a specific platformer ability is currently enabled. | Ability *(combo)* <br> |
 | Compare animation mode | Check the current animation mode. | Mode *(combo)* <br> |
 | Is axis frozen | Check if an axis is currently frozen. | Axis *(combo)* <br> |
+| Is driven moving | True while the character is being externally driven (input suppressed by a Set Driven Move call). Use to block other actions during dashes, knockback, or launches. |  |
 | Is enabled | Check if the behavior is currently active. |  |
 | Is facing right | Check if the character is facing right. Invert for facing left. |  |
 | Is falling | Check if the character is falling through the air. |  |
 | Is ignoring input | Check if input is currently being ignored. |  |
-| Is in knockback | Check if the character is currently in a knockback state (input suppressed by a knockback call). |  |
 | Is jumping | Check if the character is currently moving upward from a jump. |  |
 | Is moving | Check if the character is moving at all. |  |
 | Is on ceiling | Check if the character is touching a ceiling. |  |
@@ -148,6 +144,9 @@ npm run dev
 
 ---
 ## Changelog
+
+**1.4.2.0**
+- **Changed:** Rename the knockback feature to a more general "driven move"
 
 **1.4.1.0**
 - **Added:** - Adds animation-mode.

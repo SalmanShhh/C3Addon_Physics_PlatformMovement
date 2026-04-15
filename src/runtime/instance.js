@@ -64,8 +64,8 @@ export default function (parentClass) {
       this._freezeX = false;
       this._freezeY = false;
 
-      // Knockback & simulated jump tracking
-      this._knockbackTimer = 0;
+      // Driven velocity & simulated jump tracking
+      this._drivenTimer = 0;
       this._simulatedJumpHeld = false;
       this._prevSimulatedJumpHeld = false;
 
@@ -258,10 +258,10 @@ export default function (parentClass) {
         return;
       }
 
-      // ── KNOCKBACK TIMER ─────────────────────────────────────────────────
-      const inKnockback = this._knockbackTimer > 0;
-      if (inKnockback) {
-        this._knockbackTimer = Math.max(0, this._knockbackTimer - dt);
+      // ── DRIVEN VELOCITY TIMER ────────────────────────────────────────────
+      const inDriven = this._drivenTimer > 0;
+      if (inDriven) {
+        this._drivenTimer = Math.max(0, this._drivenTimer - dt);
         this._inputX = 0;
         this._jumpInputPressed = false;
         this._jumpInputReleased = false;
@@ -270,7 +270,7 @@ export default function (parentClass) {
       // ── HORIZONTAL MOVEMENT ─────────────────────────────────────────────
       let vx = this._phys.getVelocityX();
 
-      if (!inKnockback) {
+      if (!inDriven) {
         if (this._inputX !== 0) {
           // Accelerate toward target speed
           const targetVx = this._inputX * this._maxSpeed;
@@ -312,7 +312,7 @@ export default function (parentClass) {
 
       const wantJump = this._jumpInputPressed || this._jumpBufferTimer > 0;
 
-      if (wantJump && !inKnockback) {
+      if (wantJump && !inDriven) {
         // Wall jump check
         if (this._wallJump && !this._onFloor && (this._onWallLeft || this._onWallRight)) {
           // Wall jump
@@ -629,7 +629,7 @@ export default function (parentClass) {
       return "Falling";
     }
 
-    // ── Knockback ─────────────────────────────────────────────────────────
+    // ── Driven Velocity ───────────────────────────────────────────────────
 
     /**
      * Add an instantaneous velocity impulse to the current Physics velocity (px/s).
@@ -647,16 +647,17 @@ export default function (parentClass) {
     }
 
     /**
-     * Set the velocity and suppress all movement input for a fixed duration.
-     * Gravity, wall slide, and max fall speed still apply during knockback.
-     * @param {number} vx - Horizontal knockback velocity in px/s (positive = right)
-     * @param {number} vy - Vertical knockback velocity in px/s (positive = down)
+     * Temporarily drives the character at the given velocity, suppressing movement
+     * input for a fixed duration. Use for dashes, knockback, launch pads, or any
+     * externally driven movement. Gravity, wall slide, and max fall speed still apply.
+     * @param {number} vx - Horizontal velocity in px/s (positive = right)
+     * @param {number} vy - Vertical velocity in px/s (positive = down)
      * @param {number} duration - Seconds to suppress input
      */
-    knockback(vx, vy, duration) {
+    drivenVelocity(vx, vy, duration) {
       if (this._phys) {
         this._phys.setVelocity(vx, vy);
-        this._knockbackTimer = Math.max(0, duration);
+        this._drivenTimer = Math.max(0, duration);
       }
     }
 
@@ -691,7 +692,7 @@ export default function (parentClass) {
         wallContactSide: this._wallContactSide,
         freezeX: this._freezeX,
         freezeY: this._freezeY,
-        knockbackTimer: this._knockbackTimer,
+        drivenTimer: this._drivenTimer,
       };
     }
 
@@ -725,7 +726,7 @@ export default function (parentClass) {
       this._wallContactSide = o.wallContactSide;
       this._freezeX = o.freezeX ?? false;
       this._freezeY = o.freezeY ?? false;
-      this._knockbackTimer = o.knockbackTimer ?? 0;
+      this._drivenTimer = o.drivenTimer ?? o.knockbackTimer ?? 0;
     }
 
     _getDebuggerProperties() {

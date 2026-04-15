@@ -211,18 +211,18 @@
               }
             }
           },
-          "Knockback": {
-            "list-name": "Apply knockback",
-            "display-text": "Apply knockback ({0}, {1}) for {2}s",
-            "description": "Set the velocity and suppress all movement input for the given duration. Gravity, wall slide, and max fall speed still apply during knockback.",
+          "DrivenMove": {
+            "list-name": "Set driven move",
+            "display-text": "Set driven move ({0}, {1}) for {2}s",
+            "description": "Temporarily drives the character at the given velocity, suppressing movement input for the duration. Use for dashes, knockback, launch pads, or any externally driven movement. Gravity, wall slide, and max fall speed still apply.",
             "params": {
               "vx": {
                 "name": "Vector X",
-                "desc": "Horizontal knockback velocity in px/s (positive = right, negative = left)."
+                "desc": "Horizontal driven velocity in px/s (positive = right, negative = left). Use for dashes or sideways knockback."
               },
               "vy": {
                 "name": "Vector Y",
-                "desc": "Vertical knockback velocity in px/s (positive = down, negative = up)."
+                "desc": "Vertical driven velocity in px/s (positive = down, negative = up). Use for launches or upward knockback."
               },
               "duration": {
                 "name": "Duration",
@@ -469,6 +469,12 @@
               }
             }
           },
+          "IsDrivenMoving": {
+            "list-name": "Is driven moving",
+            "display-text": "Is driven moving",
+            "description": "True while the character is being externally driven (input suppressed by a Set Driven Move call). Use to block other actions during dashes, knockback, or launches.",
+            "params": {}
+          },
           "IsEnabled": {
             "list-name": "Is enabled",
             "display-text": "Is enabled",
@@ -491,12 +497,6 @@
             "list-name": "Is ignoring input",
             "display-text": "Is ignoring input",
             "description": "Check if input is currently being ignored.",
-            "params": {}
-          },
-          "IsInKnockback": {
-            "list-name": "Is in knockback",
-            "display-text": "Is in knockback",
-            "description": "Check if the character is currently in a knockback state (input suppressed by a knockback call).",
             "params": {}
           },
           "IsJumping": {

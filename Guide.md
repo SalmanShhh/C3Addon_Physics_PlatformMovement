@@ -578,7 +578,7 @@ Event: Every tick
 | **Set vector Y** `value` | Directly set vertical Physics velocity (px/s). Bypasses jump system. Negative = up. |
 | **Stop** | Zero both velocity components instantly. Movement can resume next tick. |
 | **Apply impulse** `vx, vy` | Add an instantaneous velocity impulse to the current Physics velocity (px/s). The behavior's deceleration naturally tapers it off. Does not suppress input. |
-| **Apply knockback** `vx, vy, duration` | Set velocity to `(vx, vy)` and suppress all movement input for `duration` seconds. Gravity, wall slide, and max fall speed still apply during knockback. |
+| **Set driven move** `vx, vy, duration` | Temporarily drives the character at the given velocity, suppressing movement input for `duration` seconds. Use for dashes, knockback, launch pads, or any externally driven movement. Gravity, wall slide, and max fall speed still apply. |
 | **Set ignore input** `enabled` | When true, all simulated input is ignored. Gravity and physics continue. |
 | **Set enabled** `enabled` | Fully enable/disable the behavior. Disabled = stops modifying Physics velocity entirely. |
 | **Set freeze axis** `axis, freeze` | Lock Horizontal, Vertical, or Both axes. Frozen axes have velocity forced to zero every tick. |
@@ -628,7 +628,7 @@ Event: Every tick
 | **Compare vector Y** `op, value` | Compare vertical velocity against a value. Positive = downward. |
 | **Is axis frozen** `axis` | True if the specified axis (Horizontal or Vertical) is currently frozen. Invertible. |
 | **Is animation mode** `mode` | True if the current animation mode matches the selected option: Idle, Moving, Jumping, Falling, Wall sliding, or Disabled. Invertible. |
-| **Is in knockback** | True if a knockback is currently active (input is suppressed). Invertible. |
+| **Is driven moving** | True while the character is being externally driven (input suppressed by a Set Driven Move call). Use to block other actions during dashes, knockback, or launches. Invertible. |
 
 ---
 
@@ -835,21 +835,50 @@ Event: Player -> Is NOT overlapping SpeedZone
 
 ### Use Case 9 — Water Zone (Slow Movement)
 
-**Scenario:** Entering water reduces speed, gravity, and fall speed for a floaty underwater feel.
+**Scenario:** Entering water reduces speed, gravity, and fall speed for a floaty underwater feel. The player can still run and jump, but everything is slower and more buoyant. Exiting the water instantly restores normal physics.
+
+**Setup tips:**
+- Set the Water object to be a trigger zone (no solid / no Physics body), so the player passes through it freely.
+- Use a deep-water variant with even lower gravity and fall speed for full-submersion areas.
+- Combine with an `IsOnFloor` check inside the water zone to play a "wade" animation when the player is touching the bottom.
 
 #### Event sheet
 ```
+// --- Enter water ---
 Event: Player -> On collision with Water
   Action: PlatformerPhysics -> Set max speed to 100
+  Action: PlatformerPhysics -> Set acceleration to 600
+  Action: PlatformerPhysics -> Set deceleration to 400
   Action: PlatformerPhysics -> Set gravity to 200
   Action: PlatformerPhysics -> Set max fall speed to 150
-  Action: PlatformerPhysics -> Set jump strength to 400
+  Action: PlatformerPhysics -> Set jump strength to 350
+  Action: Player -> Set animation to "Swim"
 
+// --- Leave water ---
 Event: Player -> On leaving Water
   Action: PlatformerPhysics -> Set max speed to 200
+  Action: PlatformerPhysics -> Set acceleration to 1500
+  Action: PlatformerPhysics -> Set deceleration to 1500
   Action: PlatformerPhysics -> Set gravity to 1500
   Action: PlatformerPhysics -> Set max fall speed to 1000
   Action: PlatformerPhysics -> Set jump strength to 600
+
+// --- Animation inside water ---
+Event: Every tick
+  Condition: Player -> Is overlapping Water
+  Condition: PlatformerPhysics -> Is on floor
+    Action: Player -> Set animation to "WadeIdle"  // standing on the pool floor
+
+Event: Every tick
+  Condition: Player -> Is overlapping Water
+  Condition: PlatformerPhysics -> Is on floor [INVERTED]
+  Condition: PlatformerPhysics -> Is moving
+    Action: Player -> Set animation to "Swim"
+
+// --- Surface jump (burst of speed upward when leaving water) ---
+Trigger: PlatformerPhysics -> On landed
+  Condition: Player -> Is overlapping Water [INVERTED]  // just exited water on landing
+    Action: PlatformerPhysics -> Set vector Y to -300   // optional launch boost on exit
 ```
 
 ---
@@ -1105,7 +1134,7 @@ Platformer Physics fully supports Construct 3's savegame system. All runtime sta
 
 - Configuration overrides (max speed, acceleration, gravity, etc.)
 - Contact state (on floor, wall contact side, etc.)
-- Timer values (coyote timer, jump buffer, air time, knockback timer)
+- Timer values (coyote timer, jump buffer, air time, driven move timer)
 - Jump state (jumps remaining)
 - Input state (ignore input, enabled)
 - Facing direction
@@ -1218,7 +1247,7 @@ beh.simulateControl(2);  // jump
 
 ---
 
-### Knockback methods
+### Driven move methods
 
 #### `applyImpulse(vx, vy)` - additive impulse
 
@@ -1231,24 +1260,27 @@ beh.applyImpulse(-300, -100);
 
 The character can still move and jump; the extra velocity bleeds off over the next few frames.
 
-#### `knockback(vx, vy, duration)` - full knockback with input lock
+#### `drivenVelocity(vx, vy, duration)` - driven move with input lock
 
-Sets velocity directly and suppresses all horizontal movement input and jumping for `duration` seconds. Gravity, wall slide, and max fall speed still apply during the window — the character arcs naturally:
+Sets velocity directly and suppresses all movement input and jumping for `duration` seconds. Use for dashes, knockback, launch pads, or any externally driven movement. Gravity, wall slide, and max fall speed still apply — the character arcs naturally:
 
 ```js
 // Hard knockback left-and-up, locks input for 0.5 seconds
-beh.knockback(-400, -200, 0.5);
+beh.drivenVelocity(-400, -200, 0.5);
+
+// Dash right, locks input for 0.2 seconds
+beh.drivenVelocity(600, 0, 0.2);
 ```
 
 After `duration` expires, normal control resumes automatically. No cleanup event needed.
 
 **Choosing between the two:**
 
-| | `applyImpulse` | `knockback` |
+| | `applyImpulse` | `drivenVelocity` |
 |---|---|---|
 | Velocity effect | Additive | Replaces current velocity |
 | Input during effect | Normal (player retains control) | Suppressed for `duration` |
-| Use for | Light hits, recoil, small bumps | Enemy attacks, hazards, launch pads |
+| Use for | Light hits, recoil, small bumps | Dashes, enemy attacks, launch pads |
 
 ---
 
@@ -1271,7 +1303,7 @@ beh.IsEnabled()            // true if the behavior is active
 beh.IsIgnoringInput()      // true if input suppression is on
 beh.IsAbilityEnabled(0)    // 0=CoyoteTime, 1=WallSliding, 2=WallJump, 3=VariableJump
 beh.IsAxisFrozen(0)        // 0=Horizontal, 1=Vertical
-beh.IsInKnockback()        // true if knockback input-lock is active
+beh.IsDrivenMoving()       // true if driven move input-lock is active
 beh.IsAnimMode(0)          // 0=Idle, 1=Moving, 2=Jumping, 3=Falling, 4=WallSliding, 5=Disabled
 ```
 
@@ -1319,9 +1351,9 @@ function onPlayerHit(playerInst, hitDirection) {
     beh.applyImpulse(hitDirection * -200, -80);
   }
 
-  // Heavy hit — full knockback, brief input lock
+  // Heavy hit — driven move override, brief input lock
   if (hitStrength === "heavy") {
-    beh.knockback(hitDirection * -450, -250, 0.4);
+    beh.drivenVelocity(hitDirection * -450, -250, 0.4);
   }
 }
 ```
@@ -1368,6 +1400,6 @@ function tickEnemy(enemyInst, targetX) {
 ### Gotchas
 
 - **`_phys` may be null on the very first tick.** All public methods guard against this internally. Calls before the first `_tick` completes are safe — they simply do nothing.
-- **Direct velocity calls bypass `setIgnoreInput`.** Setting `IgnoreInput = true` blocks `simulateControl` input, but direct calls like `setVelocity`, `setVectorX`, `setVectorY`, `applyImpulse`, and `knockback` still apply. This is intentional: code-driven overrides should not be blocked by the input suppression flag.
-- **`knockback` resets on save/load.** The `knockbackTimer` is saved to JSON, so a knockback mid-flight survives a load correctly.
+- **Direct velocity calls bypass `setIgnoreInput`.** Setting `IgnoreInput = true` blocks `simulateControl` input, but direct calls like `setVelocity`, `setVectorX`, `setVectorY`, `applyImpulse`, and `drivenVelocity` still apply. This is intentional: code-driven overrides should not be blocked by the input suppression flag.
+- **`drivenVelocity` timer survives save/load.** The driven move timer is saved to JSON, so a driven move mid-flight resumes correctly after a load.
 - **`simulateControl` accepts strings or indexes.** From script, pass a readable string like `"jump"` or `"Jump Release"` — spaces, underscores, and hyphens are ignored when matching. Numeric indexes (0–4) still work and are what the ACE combo dropdown passes internally.

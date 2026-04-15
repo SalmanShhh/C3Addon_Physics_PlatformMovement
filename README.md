@@ -1,13 +1,13 @@
 <img src="./src/icon.svg" width="100" /><br>
 # Physics Platformer
 <i>Physics-based platformer movement — run, jump, wall-slide, and interact using the built-in Physics behavior.</i> <br>
-### Version 1.4.0.0
+### Version 1.4.1.0
 
-[<img src="https://placehold.co/200x50/4493f8/FFF?text=Download&font=montserrat" width="200"/>](https://github.com/SalmanShhh/C3Addon_platformer_physics/releases/download/salmanshh_platformer_physics-1.4.0.0.c3addon/salmanshh_platformer_physics-1.4.0.0.c3addon)
+[<img src="https://placehold.co/200x50/4493f8/FFF?text=Download&font=montserrat" width="200"/>](https://github.com/SalmanShhh/C3Addon_platformer_physics/releases/download/salmanshh_platformer_physics-1.4.1.0.c3addon/salmanshh_platformer_physics-1.4.1.0.c3addon)
 <br>
 <sub> [See all releases](https://github.com/SalmanShhh/C3Addon_platformer_physics/releases) </sub> <br>
 
-#### What's New in 1.4.0.0
+#### What's New in 1.4.1.0
 - **Added:** - Adds animation-mode.
 - **Added:** - knockback conditions/expressions.
 - **Added:** - improve robustness of floor/wall detection across collision shapes.
@@ -148,6 +148,13 @@ npm run dev
 
 ---
 ## Changelog
+
+**1.4.1.0**
+- **Added:** - Adds animation-mode.
+- **Added:** - knockback conditions/expressions.
+- **Added:** - improve robustness of floor/wall detection across collision shapes.
+- **Added:** - Debugger properties are editable.
+- **Added:** - ACE to overwrite whether character is "on the Floor" (Grounded)
 
 **1.4.0.0**
 - **Added:** - Adds animation-mode.

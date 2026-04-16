@@ -1,7 +1,7 @@
 export const config = {
   listName: "Simulate control",
   displayText: "Simulate {0}",
-  description: "Tell the behavior to act as if the player pressed a movement key this tick. Use 'Left' and 'Right' every tick the button is held. Use 'Jump' on the frame the button is pressed and 'Jump release' on the frame it is released.",
+  description: "Simulate one of the movement controls being held down.",
   params: [
     {
       id: "control",

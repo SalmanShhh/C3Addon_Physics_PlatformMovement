@@ -1,7 +1,7 @@
 export const config = {
   listName: "Is on wall",
   displayText: "Is on wall ({0})",
-  description: "Check if the character is touching a wall.",
+  description: "True when touching the chosen wall side. Use to play a wall-grab or push animation.",
   isInvertible: true,
   params: [
     {

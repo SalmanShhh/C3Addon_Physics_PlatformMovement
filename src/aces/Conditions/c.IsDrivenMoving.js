@@ -1,7 +1,7 @@
 export const config = {
   listName: "Is driven moving",
   displayText: "Is driven moving",
-  description: "True while the character is being externally driven (input suppressed by a Set Driven Move call). Use to block other actions during dashes, knockback, or launches.",
+  description: "True while a driven move (e.g. dash or knockback) is in progress. Use to lock out other actions until it finishes.",
   isInvertible: true,
   params: [],
 };

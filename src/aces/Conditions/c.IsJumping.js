@@ -1,7 +1,7 @@
 export const config = {
   listName: "Is jumping",
   displayText: "Is jumping",
-  description: "Check if the character is currently moving upward from a jump.",
+  description: "True while the character is moving upward after a jump.",
   isInvertible: true,
   params: [],
 };

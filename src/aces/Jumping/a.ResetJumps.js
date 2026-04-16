@@ -1,7 +1,7 @@
 export const config = {
   listName: "Reset jumps",
   displayText: "Reset jumps",
-  description: "Give back all jumps as if the character just landed.",
+  description: "Give all jumps back, as if the character just landed.",
   params: [],
 };
 

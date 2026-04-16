@@ -1,7 +1,7 @@
 export const config = {
   listName: "Apply impulse",
   displayText: "Apply impulse ({0}, {1})",
-  description: "Add an instantaneous velocity impulse to the current Physics velocity. The behavior's deceleration will naturally taper it off.",
+  description: "Add a push to the character's current velocity, they keep control and deceleration tapers it off.",
   params: [
     {
       id: "vx",

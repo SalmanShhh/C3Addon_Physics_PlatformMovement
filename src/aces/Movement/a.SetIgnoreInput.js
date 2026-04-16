@@ -1,7 +1,7 @@
 export const config = {
   listName: "Set ignore input",
   displayText: "Set ignore input to {0}",
-  description: "When true, all input is ignored until re-enabled.",
+  description: "Block all character input without stopping physics.",
   params: [
     {
       id: "ignore",

@@ -1,7 +1,7 @@
 export const config = {
   listName: "Is on floor",
   displayText: "Is on floor",
-  description: "Check if the character is standing on the ground.",
+  description: "True when touching the ground.",
   isInvertible: true,
   params: [],
 };

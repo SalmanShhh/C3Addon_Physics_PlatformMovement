@@ -1,7 +1,7 @@
 export const config = {
   listName: "Set freeze axis",
   displayText: "Freeze {0} axis: {1}",
-  description: "Lock an axis so the character cannot move on it.",
+  description: "Lock movement on one or both axes.",
   params: [
     {
       id: "axis",

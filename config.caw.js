@@ -130,6 +130,13 @@ export const properties = [
   },
   {
     type: PROPERTY_TYPE.FLOAT,
+    id: "wallCoyoteTime",
+    name: "Wall Coyote Time",
+    desc: "Seconds after leaving a wall during which a wall jump is still allowed. Mirrors floor coyote time for walls. Set to 0 to disable.",
+    options: { initialValue: 0 },
+  },
+  {
+    type: PROPERTY_TYPE.FLOAT,
     id: "jumpBuffer",
     name: "Jump Buffer",
     desc: "Seconds a jump input is remembered before landing.",
@@ -176,6 +183,13 @@ export const properties = [
     name: "Variable Jump Height",
     desc: "Hold the jump button for a higher jump, release it early for a shorter one.",
     options: { initialValue: true },
+  },
+  {
+    type: PROPERTY_TYPE.FLOAT,
+    id: "jumpReleaseDamping",
+    name: "Jump Release Damping",
+    desc: "Percentage (0–100) of upward velocity retained when the jump button is released early. 50 = keep half speed; 0 = instant cut; 100 = no variable height effect.",
+    options: { initialValue: 50 },
   },
   {
     type: PROPERTY_TYPE.CHECK,

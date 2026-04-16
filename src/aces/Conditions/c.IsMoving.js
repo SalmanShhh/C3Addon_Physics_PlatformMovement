@@ -1,7 +1,7 @@
 export const config = {
   listName: "Is moving",
   displayText: "Is moving",
-  description: "Check if the character is moving at all.",
+  description: "True whenever the character has any movement.",
   isInvertible: true,
   params: [],
 };

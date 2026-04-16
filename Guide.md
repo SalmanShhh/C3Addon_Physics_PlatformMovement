@@ -394,6 +394,31 @@ Trigger: PlatformerPhysics -> On wall jumped
   // WallContactSide expression: -1 = jumped off left wall, 1 = right wall
 ```
 
+### Wall Coyote Time
+
+**Wall Coyote Time** (default `0` seconds, disabled) gives the player a brief window after leaving a wall during which a wall jump is still allowed. This mirrors floor coyote time and makes wall-jumping feel more forgiving — if the player is a few frames late pressing jump after sliding off a wall, it still works.
+
+Enable it by setting **Wall Coyote Time** in the Properties Bar (or with `SetWallCoyoteTime` at runtime):
+
+```
+// Grant 0.1s window after leaving a wall
+Event: On start of layout
+  Action: PlatformerPhysics -> Set wall coyote time to 0.1
+```
+
+The `OnLeftWallContact` trigger fires when the player leaves a wall without landing. Wall coyote time starts counting at that moment.
+
+The `WallCoyoteTimer` expression returns the current countdown value (0 when not in a coyote window):
+
+```
+// Show visual indicator while wall coyote window is open
+Event: Every tick
+  Condition: PlatformerPhysics.WallCoyoteTimer > 0
+    Action: CoyoteIndicator -> Set visible to true
+```
+
+> **Note:** Wall coyote time requires **Wall Jump** to be enabled. After a wall jump executes, the coyote window is immediately cleared — a second wall jump from the same wall is not possible via the coyote window alone.
+
 ### Wall contact detection
 
 Use `IsOnWall` to check for wall contact:
@@ -584,6 +609,8 @@ Event: Every tick
 | **Set freeze axis** `axis, freeze` | Lock Horizontal, Vertical, or Both axes. Frozen axes have velocity forced to zero every tick. |
 | **Set on floor** `value` | Override the floor contact flag for this tick. `true` also resets jumps remaining, coyote timer, and air time. Must be called every tick to sustain — Physics contacts reclassify the flag each frame. |
 
+> **Choose between `Apply impulse` and `Set driven move`:** `Apply impulse` is additive — the character retains input control and natural deceleration tapers the extra velocity. `Set driven move` replaces velocity and locks input for the duration. Use impulse for light hits and recoil; use driven move for dashes, enemy launches, and knockback.
+
 ### Jumping
 
 | Action | Description |
@@ -591,7 +618,11 @@ Event: Every tick
 | **Set max jumps** `count` | Set total jumps per airborne period. 1 = single, 2 = double jump. |
 | **Reset jumps** | Restore full jump count as if just landed. Use for bounce pads or mid-air pickups. |
 | **Set wall jump** `enabled` | Enable/disable wall jumping at runtime. |
+| **Set wall jump strength** `value` | Override the horizontal impulse component of a wall jump (px/s). |
 | **Set wall slide** `enabled` | Enable/disable wall sliding at runtime. |
+| **Set wall slide speed** `value` | Override the maximum fall speed (px/s) while wall sliding. |
+| **Set wall coyote time** `value` | Set the wall coyote time duration (seconds). Pass 0 to disable. |
+| **Set variable jump height** `enabled` | Enable or disable variable jump height at runtime. |
 | **Set jump release damping** `percent` | Set the percentage (0–100) of upward velocity kept on early jump release. Default 50. |
 
 ### Configuration
@@ -604,6 +635,9 @@ Event: Every tick
 | **Set jump strength** `value` | Override Jump Strength (px/s) at runtime. |
 | **Set gravity** `value` | Override additional gravity (px/s²) at runtime. |
 | **Set max fall speed** `value` | Override terminal velocity cap (px/s) at runtime. |
+| **Set coyote time** `value` | Override floor coyote time (seconds) at runtime. Pass 0 to disable. |
+| **Set jump buffer** `value` | Override jump buffer duration (seconds) at runtime. Pass 0 to disable. |
+| **Set debug mode** `enabled` | Enable or disable console debug output at runtime. |
 
 ---
 
@@ -621,7 +655,7 @@ Event: Every tick
 | **Is facing right** | True if facing right. Invert for facing left. Invertible. |
 | **Is enabled** | True if the behavior is active. Invertible. |
 | **Is ignoring input** | True if `SetIgnoreInput` was set to true. Invertible. |
-| **Is ability enabled** `ability` | True if the specified ability is currently active. Abilities: Coyote Time, Wall Sliding, Wall Jump, Variable Jump. Invertible. |
+| **Is ability enabled** `ability` | True if the specified ability is currently active. Abilities: Coyote Time, Wall Coyote Time, Wall Sliding, Wall Jump, Variable Jump. Invertible. |
 | **Is wall sliding** | True if wall slide is active this tick. Invertible. |
 | **Compare speed** `op, value` | Compare velocity magnitude against a value. Operators: <, ≤, =, ≥, >. |
 | **Compare vector X** `op, value` | Compare horizontal velocity against a value. |
@@ -646,6 +680,7 @@ Event: Every tick
 | `Acceleration` | number | Current Acceleration setting (px/s²). |
 | `Deceleration` | number | Current Deceleration setting (px/s²). |
 | `MovingAngle` | number | Direction of velocity in degrees (0 = right, 90 = down). 0 when stationary. |
+| `WallCoyoteTimer` | number | Seconds remaining in the wall coyote window. 0 when not in a wall coyote window. |
 | `JumpsRemaining` | number | Jumps left in the current airborne period. Resets on landing. |
 | `AirTime` | number | Seconds since last leaving floor contact. 0 while grounded. |
 | `FacingDirection` | number | -1 = left, 1 = right. |
@@ -664,6 +699,7 @@ Event: Every tick
 | **On double jumped** | Fires when any jump beyond the first is consumed (jump index ≥ 2). `JumpsRemaining` available inside. |
 | **On wall jumped** | Fires when a wall jump executes. `WallContactSide`, `VectorX`, `VectorY` available inside. |
 | **On facing changed** | Fires when horizontal facing direction changes. `FacingDirection` available inside. |
+| **On left wall contact** | Fires when the character loses wall contact without landing on the floor. The wall coyote timer starts at this moment. `WallContactSide` (last known wall side) and `WallCoyoteTimer` available inside. |
 
 ---
 
@@ -1096,6 +1132,7 @@ The behavior appears as a collapsible section in the C3 debugger panel. Most pro
 | `Jump buffer` | ✓ | Seconds ≥ 0 |
 | `Variable jump` | ✓ toggle | |
 | `Jump release damping` | ✓ | 0–1 fraction (0 = instant cut, 1 = no variable height) |
+| `Wall coyote time` | ✓ | Seconds ≥ 0 |
 | `Jumps remaining` | read-only | Resets to Max jumps on landing |
 | `Animation mode` | read-only | Idle / Moving / Jumping / Falling / Wall sliding / Disabled |
 
@@ -1191,6 +1228,9 @@ beh.setDeceleration(2000);     // deceleration in px/s²
 beh.setJumpStrength(700);      // jump impulse in px/s
 beh.setGravity(1200);          // extra downward gravity in px/s²
 beh.setMaxFallSpeed(1200);     // terminal falling speed in px/s
+beh.setCoyoteTime(0.15);       // floor coyote time in seconds (0 = disabled)
+beh.setJumpBuffer(0.12);       // jump buffer in seconds (0 = disabled)
+beh.setDebugMode(true);        // enable/disable console debug output
 ```
 
 ---
@@ -1202,7 +1242,11 @@ beh.resetJumps();               // restore all jumps as if just landed
 beh.setMaxJumps(2);             // 1 = single, 2 = double, etc.
 beh.setJumpReleaseDamping(30);  // 0–100: % of upward velocity kept on early release
 beh.setWallJump(true);          // enable wall jumping
+beh.setWallJumpStrength(500);   // horizontal impulse of a wall jump (px/s)
 beh.setWallSlide(true);         // enable wall sliding
+beh.setWallSlideSpeed(100);     // max fall speed while wall sliding (px/s)
+beh.setWallCoyoteTime(0.1);     // wall coyote time in seconds (0 = disabled)
+beh.setVariableJumpHeight(true); // enable/disable variable jump height
 ```
 
 ---

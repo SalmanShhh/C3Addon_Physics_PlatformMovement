@@ -1,7 +1,7 @@
 export const config = {
   listName: "Set enabled",
   displayText: "Set enabled to {0}",
-  description: "Fully enable or disable the behavior.",
+  description: "Turn the whole behavior on or off.",
   params: [
     {
       id: "enabled",

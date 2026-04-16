@@ -1,14 +1,17 @@
 <img src="./src/icon.svg" width="100" /><br>
 # Physics Platformer
 <i>Physics-based platformer movement — run, jump, wall-slide, and interact using the built-in Physics behavior.</i> <br>
-### Version 1.4.2.0
+### Version 1.4.3.0
 
-[<img src="https://placehold.co/200x50/4493f8/FFF?text=Download&font=montserrat" width="200"/>](https://github.com/SalmanShhh/C3Addon_platformer_physics/releases/download/salmanshh_platformer_physics-1.4.2.0.c3addon/salmanshh_platformer_physics-1.4.2.0.c3addon)
+[<img src="https://placehold.co/200x50/4493f8/FFF?text=Download&font=montserrat" width="200"/>](https://github.com/SalmanShhh/C3Addon_platformer_physics/releases/download/salmanshh_platformer_physics-1.4.3.0.c3addon/salmanshh_platformer_physics-1.4.3.0.c3addon)
 <br>
 <sub> [See all releases](https://github.com/SalmanShhh/C3Addon_platformer_physics/releases) </sub> <br>
 
-#### What's New in 1.4.2.0
-- **Changed:** Rename the knockback feature to a more general "driven move"
+#### What's New in 1.4.3.0
+- **Added:** - Add wall-coyote support and improve ACE docs/usability hints.
+- **Added:** - Add IsAbilityEnabled to include the new wall Coyote Time.
+- **Added:** -
+- **Fixed:** - refine descriptions across many conditions, actions and expressions to provide clearer usage hints
 
 <sub>[View full changelog](#changelog)</sub>
 
@@ -53,6 +56,7 @@ npm run dev
 | Max Fall Speed | Terminal velocity clamp (px/s downward). | float |
 | Slope Tolerance | Contact classification threshold as a fraction of half-height below center to count as floor. | float |
 | Coyote Time | Seconds after leaving a floor edge during which a jump is still allowed. | float |
+| Wall Coyote Time | Seconds after leaving a wall during which a wall jump is still allowed. Mirrors floor coyote time for walls. Set to 0 to disable. | float |
 | Jump Buffer | Seconds a jump input is remembered before landing. | float |
 | Max Jumps | Total jumps allowed per airborne period. 1 = single jump, 2 = double jump. | integer |
 | Wall Slide | Clamp fall speed to Wall Slide Speed when pressing into a wall while airborne. | check |
@@ -60,6 +64,7 @@ npm run dev
 | Wall Jump | Allow jumping off a wall. | check |
 | Wall Jump Strength | Horizontal impulse component of a wall jump. | float |
 | Variable Jump Height | Hold the jump button for a higher jump, release it early for a shorter one. | check |
+| Jump Release Damping | Percentage (0–100) of upward velocity retained when the jump button is released early. 50 = keep half speed; 0 = instant cut; 100 = no variable height effect. | float |
 | Debug Mode | Print contact classification and velocity state to the browser console each tick. | check |
 
 
@@ -68,26 +73,34 @@ npm run dev
 | Action | Description | Params
 | --- | --- | --- |
 | Set acceleration | Change how quickly the character speeds up. | Acceleration             *(number)* <br> |
-| Set deceleration | Override Deceleration at runtime. | Deceleration             *(number)* <br> |
+| Set coyote time | How long after walking off a ledge the player can still jump. Makes platforming more forgiving. Set to 0 to disable. | Time             *(number)* <br> |
+| Set debug mode | Turn debug console output on or off. Prints movement state to the browser console (F12) — handy when tuning values. | Enabled             *(boolean)* <br> |
+| Set deceleration | How quickly the character stops when releasing input. Low = icy sliding, high = instant stop. | Deceleration             *(number)* <br> |
 | Set gravity | Override the additional downward gravity (px/s²) at runtime. | Gravity             *(number)* <br> |
+| Set jump buffer | How early before landing a jump press is accepted. Prevents missed jumps when the button is pressed slightly too soon. Set to 0 to disable. | Time             *(number)* <br> |
 | Set jump strength | Change how high the character jumps. | Strength             *(number)* <br> |
 | Set max fall speed | Change the maximum fall speed the character can reach. | Speed             *(number)* <br> |
 | Set max speed | Change the top running speed. | Speed             *(number)* <br> |
-| Reset jumps | Give back all jumps as if the character just landed. |  |
+| Reset jumps | Give all jumps back, as if the character just landed. |  |
 | Set jump release damping | Set the percentage of upward velocity retained when the jump button is released early. Lower values give more control over jump height. | Damping %             *(number)* <br> |
-| Set max jumps | Set how many times the character can jump before landing. | Count             *(number)* <br> |
+| Set max jumps | How many times the character can jump before touching the ground. Set to 2 to unlock double jump. | Count             *(number)* <br> |
+| Set variable jump height | Tap for a short hop, hold for a full jump. Disable for a fixed jump height every time. | Enabled             *(boolean)* <br> |
+| Set wall coyote time | How long after leaving a wall the player can still wall jump. Forgives slightly late button presses. Set to 0 to disable. | Time             *(number)* <br> |
 | Set wall jump | Toggle the ability to jump off walls. | Enabled             *(boolean)* <br> |
+| Set wall jump strength | How far the character pushes away from the wall on a wall jump. Higher = wider arc — use to tune the feel of vertical shaft climbing. | Strength             *(number)* <br> |
 | Set wall slide | Toggle the ability to slide down walls. | Enabled             *(boolean)* <br> |
-| Apply impulse | Add an instantaneous velocity impulse to the current Physics velocity. The behavior's deceleration will naturally taper it off. | Vector X             *(number)* <br>Vector Y             *(number)* <br> |
+| Set wall slide speed | How fast the character slides down a wall. Lower = slower, more controlled. e.g. set very low for a sticky-wall ability. | Speed             *(number)* <br> |
+| Apply impulse | Add a push to the character's current velocity, they keep control and deceleration tapers it off. | Vector X             *(number)* <br>Vector Y             *(number)* <br> |
 | Set driven move | Temporarily drives the character at the given velocity, suppressing movement input for the duration. Use for dashes, knockback, launch pads, or any externally driven movement. Gravity, wall slide, and max fall speed still apply. | Vector X             *(number)* <br>Vector Y             *(number)* <br>Duration             *(number)* <br> |
-| Set enabled | Fully enable or disable the behavior. | Enabled             *(boolean)* <br> |
-| Set freeze axis | Lock an axis so the character cannot move on it. | Axis             *(combo)* <br>Freeze             *(boolean)* <br> |
-| Set ignore input | When true, all input is ignored until re-enabled. | Ignore             *(boolean)* <br> |
-| Set on floor | Override the floor contact state for this tick. Useful for moving platforms or custom collision logic. Setting true also resets jumps remaining and clears coyote/air timers as if the character just landed. | On floor             *(boolean)* <br> |
+| Apply driven movement | Take control of the character's movement and lock player input for a short time. Use for dashes, heavy knockback, or launch pads. | Vector X             *(number)* <br>Vector Y             *(number)* <br>Duration             *(number)* <br> |
+| Set enabled | Turn the whole behavior on or off. | Enabled             *(boolean)* <br> |
+| Set freeze axis | Lock movement on one or both axes. | Axis             *(combo)* <br>Freeze             *(boolean)* <br> |
+| Set ignore input | Block all character input without stopping physics. | Ignore             *(boolean)* <br> |
+| Set on floor | Force the character to be treated as grounded this tick. Use with moving platforms where Physics contact alone is unreliable. | On floor             *(boolean)* <br> |
 | Set vector | Set horizontal and vertical speed in px/s. | Vector X             *(number)* <br>Vector Y             *(number)* <br> |
 | Set vector X | Directly set the horizontal Physics velocity (px/s). | Vector X             *(number)* <br> |
 | Set vector Y | Directly set the vertical Physics velocity (px/s). | Vector Y             *(number)* <br> |
-| Simulate control | Tell the behavior to act as if the player pressed a movement key this tick. Use 'Left' and 'Right' every tick the button is held. Use 'Jump' on the frame the button is pressed and 'Jump release' on the frame it is released. | Control             *(combo)* <br> |
+| Simulate control | Simulate one of the movement controls being held down. | Control             *(combo)* <br> |
 | Stop | Instantly stop all movement. |  |
 
 
@@ -95,29 +108,30 @@ npm run dev
 ## Conditions
 | Condition | Description | Params
 | --- | --- | --- |
-| Can jump | Check if the character is able to jump right now. |  |
+| Can jump | True when a jump is possible right now (on ground, in coyote window, or has jumps left). |  |
 | Compare speed | Compare the character's current speed to a value. | Comparison *(combo)* <br>Speed *(number)* <br> |
 | Compare vector X | Compare the current X velocity component against a value. | Comparison *(combo)* <br>Vector X *(number)* <br> |
 | Compare vector Y | Compare the current Y velocity component against a value. Positive = downward. | Comparison *(combo)* <br>Vector Y *(number)* <br> |
-| Is Movement Ability enabled | Check if a specific platformer ability is currently enabled. | Ability *(combo)* <br> |
-| Compare animation mode | Check the current animation mode. | Mode *(combo)* <br> |
-| Is axis frozen | Check if an axis is currently frozen. | Axis *(combo)* <br> |
-| Is driven moving | True while the character is being externally driven (input suppressed by a Set Driven Move call). Use to block other actions during dashes, knockback, or launches. |  |
+| Is Movement Ability enabled | True if the chosen ability is currently on. Use to show unlock icons in an ability upgrade UI. | Ability *(combo)* <br> |
+| Compare animation mode | True when the animation state matches the selected option. Use to drive sprite animation switching without tracking state manually. | Mode *(combo)* <br> |
+| Is axis frozen | True if the chosen axis is currently locked. Use to check whether a stasis or freeze effect is still active. | Axis *(combo)* <br> |
+| Is driven moving | True while a driven move (e.g. dash or knockback) is in progress. Use to lock out other actions until it finishes. |  |
 | Is enabled | Check if the behavior is currently active. |  |
 | Is facing right | Check if the character is facing right. Invert for facing left. |  |
-| Is falling | Check if the character is falling through the air. |  |
+| Is falling | True while the character is moving downward in the air. |  |
 | Is ignoring input | Check if input is currently being ignored. |  |
-| Is jumping | Check if the character is currently moving upward from a jump. |  |
-| Is moving | Check if the character is moving at all. |  |
-| Is on ceiling | Check if the character is touching a ceiling. |  |
-| Is on floor | Check if the character is standing on the ground. |  |
-| Is on wall | Check if the character is touching a wall. | Side *(combo)* <br> |
-| Is wall sliding | Check if the character is sliding down a wall. |  |
+| Is jumping | True while the character is moving upward after a jump. |  |
+| Is moving | True whenever the character has any movement. |  |
+| Is on ceiling | True when touching a ceiling. Use to cut upward velocity when the character bumps their head. |  |
+| Is on floor | True when touching the ground. |  |
+| Is on wall | True when touching the chosen wall side. Use to play a wall-grab or push animation. | Side *(combo)* <br> |
+| Is wall sliding | True while sliding down a wall. |  |
 | On double jumped | Triggered when the character uses an extra mid-air jump. |  |
 | On facing changed | Triggered when the character turns around. |  |
 | On fallen off | Triggered when the character walks off a ledge. |  |
 | On jumped | Triggered every time the character jumps. |  |
 | On landed | Triggered when the character touches the ground after being in the air. |  |
+| On left wall contact | Fires when the character leaves a wall without landing. The wall coyote window opens here — use to start a wall-coyote timer indicator. |  |
 | On wall jumped | Triggered when the character jumps off a wall. |  |
 
 
@@ -140,10 +154,17 @@ npm run dev
 | VectorX | Current horizontal Physics velocity (px/s). Positive = right. | number |  | 
 | VectorY | Current vertical Physics velocity (px/s). Positive = down. | number |  | 
 | WallContactSide | Side of the most recent wall contact: -1 = left wall, 1 = right wall, 0 = no wall. | number |  | 
+| WallCoyoteTimer | Seconds left in the wall coyote window. Use to show a brief visual cue that a wall jump is still possible. | number |  | 
 
 
 ---
 ## Changelog
+
+**1.4.3.0**
+- **Added:** - Add wall-coyote support and improve ACE docs/usability hints.
+- **Added:** - Add IsAbilityEnabled to include the new wall Coyote Time.
+- **Added:** -
+- **Fixed:** - refine descriptions across many conditions, actions and expressions to provide clearer usage hints
 
 **1.4.2.0**
 - **Changed:** Rename the knockback feature to a more general "driven move"

@@ -1,7 +1,7 @@
 export const config = {
   listName: "Is axis frozen",
   displayText: "Is {0} axis frozen",
-  description: "Check if an axis is currently frozen.",
+  description: "True if the chosen axis is currently locked. Use to check whether a stasis or freeze effect is still active.",
   isInvertible: true,
   params: [
     {

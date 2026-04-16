@@ -19,15 +19,16 @@ export default function (parentClass) {
       this._maxFallSpeed     = properties[5];
       this._slopeTolerance   = properties[6];
       this._coyoteTime       = properties[7];
-      this._jumpBuffer       = properties[8];
-      this._maxJumps         = properties[9];
-      this._wallSlide        = properties[10];
-      this._wallSlideSpeed   = properties[11];
-      this._wallJump         = properties[12];
-      this._wallJumpStrength = properties[13];
-      this._variableJump     = properties[14];
-      this._jumpReleaseDamping = 0.5;
-      this._debugMode        = properties[15];
+      this._wallCoyoteTime   = properties[8];
+      this._jumpBuffer       = properties[9];
+      this._maxJumps         = properties[10];
+      this._wallSlide        = properties[11];
+      this._wallSlideSpeed   = properties[12];
+      this._wallJump         = properties[13];
+      this._wallJumpStrength = properties[14];
+      this._variableJump     = properties[15];
+      this._jumpReleaseDamping = properties[16] / 100;
+      this._debugMode        = properties[17];
 
       // Runtime state — contact classification
       this._onFloor = false;
@@ -40,6 +41,7 @@ export default function (parentClass) {
       // Runtime state — jumps and timers
       this._jumpsRemaining = this._maxJumps;
       this._coyoteTimer = 0;
+      this._wallCoyoteTimer = 0;
       this._jumpBufferTimer = 0;
       this._airTime = 0;
 
@@ -53,6 +55,8 @@ export default function (parentClass) {
       // Runtime state — facing and previous-tick flags
       this._facing = 1;
       this._wasOnFloor = false;
+      this._wasOnWall = false;
+      this._lastWallSide = 0;
       this._wasFalling = false;
       this._isWallSliding = false;
       this._justJumped = false;   // true on the tick a jump fires; prevents coyote timer starting
@@ -209,6 +213,28 @@ export default function (parentClass) {
         this._wallContactSide = 0;
       }
 
+      // ── WALL COYOTE TIME ─────────────────────────────────────────────────
+      const onWallNow = this._onWallLeft || this._onWallRight;
+      if (onWallNow && !this._onFloor) {
+        // Actively on a wall — record side, reset coyote timer, mark state
+        this._lastWallSide = this._wallContactSide;
+        this._wallCoyoteTimer = 0;
+        this._wasOnWall = true;
+      } else {
+        this._wallCoyoteTimer = Math.max(0, this._wallCoyoteTimer - dt);
+        if (this._wasOnWall && !this._onFloor) {
+          // Just left wall without landing — start wall coyote window
+          this._wallCoyoteTimer = this._wallCoyoteTime;
+          this._trigger("OnLeftWallContact");
+        }
+        if (this._onFloor) {
+          // Landed — clear wall coyote state
+          this._wallCoyoteTimer = 0;
+          this._lastWallSide = 0;
+        }
+        this._wasOnWall = false;
+      }
+
       // ── FLOOR TRANSITION EVENTS ─────────────────────────────────────────
       if (this._onFloor) {
         if (!this._wasOnFloor) {
@@ -313,15 +339,22 @@ export default function (parentClass) {
       const wantJump = this._jumpInputPressed || this._jumpBufferTimer > 0;
 
       if (wantJump && !inDriven) {
-        // Wall jump check
-        if (this._wallJump && !this._onFloor && (this._onWallLeft || this._onWallRight)) {
-          // Wall jump
-          const wallDir = this._onWallLeft ? 1 : -1; // push away from wall
+        // Wall jump check (includes wall coyote window)
+        const canWallJump = this._onWallLeft || this._onWallRight || this._wallCoyoteTimer > 0;
+        if (this._wallJump && !this._onFloor && canWallJump) {
+          // Determine which side to push away from:
+          // Use the current contact if on a wall, otherwise fall back to the last known side
+          const wallSide = (this._onWallLeft || this._onWallRight)
+            ? this._wallContactSide
+            : this._lastWallSide;
+          const wallDir = wallSide < 0 ? 1 : -1; // push away from wall
           this._phys.setVelocity(0, 0);
           vx = wallDir * this._wallJumpStrength;
           currentVy = -this._jumpStrength;
           jumped = true;
           isWallJump = true;
+          this._wallCoyoteTimer = 0;
+          this._wasOnWall = false; // prevent OnLeftWallContact from firing next tick
           this._jumpBufferTimer = 0;
           this._justJumped = true;
           this._trigger("OnWallJumped");
@@ -429,6 +462,15 @@ export default function (parentClass) {
     /** Set the terminal falling speed the character cannot exceed (px/s). @param {number} speed */
     setMaxFallSpeed(speed) { this._maxFallSpeed = speed; }
 
+    /** Set how long (seconds) after leaving a floor edge a jump is still allowed. @param {number} time */
+    setCoyoteTime(time) { this._coyoteTime = Math.max(0, time); }
+
+    /** Set how long (seconds) a jump press is remembered before landing. @param {number} time */
+    setJumpBuffer(time) { this._jumpBuffer = Math.max(0, time); }
+
+    /** Enable or disable console debug output each tick. @param {boolean} enabled */
+    setDebugMode(enabled) { this._debugMode = !!enabled; }
+
     // ── Jumping ───────────────────────────────────────────────────────────
 
     /** Restore all jumps as if the character just landed on the floor. */
@@ -450,6 +492,18 @@ export default function (parentClass) {
 
     /** Enable or disable sliding down walls by pressing into them while airborne. @param {boolean} enabled */
     setWallSlide(enabled) { this._wallSlide = !!enabled; }
+
+    /** Set how long (seconds) after leaving a wall a wall jump is still allowed. @param {number} time */
+    setWallCoyoteTime(time) { this._wallCoyoteTime = Math.max(0, time); }
+
+    /** Set the maximum fall speed (px/s) while wall sliding. @param {number} speed */
+    setWallSlideSpeed(speed) { this._wallSlideSpeed = speed; }
+
+    /** Set the horizontal impulse component of a wall jump (px/s). @param {number} strength */
+    setWallJumpStrength(strength) { this._wallJumpStrength = strength; }
+
+    /** Enable or disable variable jump height. When enabled, releasing jump early cuts upward velocity. @param {boolean} enabled */
+    setVariableJumpHeight(enabled) { this._variableJump = !!enabled; }
 
     // ── Movement ──────────────────────────────────────────────────────────
 
@@ -617,6 +671,9 @@ export default function (parentClass) {
     /** -1 = left wall, 1 = right wall, 0 = no wall contact this tick. */
     get wallContactSide() { return this._wallContactSide; }
 
+    /** Seconds remaining in the wall coyote window. 0 when not in a coyote window. */
+    get wallCoyoteTimer() { return this._wallCoyoteTimer; }
+
     /** Current animation mode string: "Idle", "Moving", "Jumping", "Falling", "Wall sliding", or "Disabled". */
     get animMode() {
       if (!this._enabled) return "Disabled";
@@ -671,6 +728,10 @@ export default function (parentClass) {
         maxFallSpeed: this._maxFallSpeed,
         slopeTolerance: this._slopeTolerance,
         coyoteTime: this._coyoteTime,
+        wallCoyoteTime: this._wallCoyoteTime,
+        wallCoyoteTimer: this._wallCoyoteTimer,
+        wasOnWall: this._wasOnWall,
+        lastWallSide: this._lastWallSide,
         jumpBuffer: this._jumpBuffer,
         maxJumps: this._maxJumps,
         wallSlide: this._wallSlide,
@@ -705,6 +766,10 @@ export default function (parentClass) {
       this._maxFallSpeed = o.maxFallSpeed;
       this._slopeTolerance = o.slopeTolerance ?? 0.35;
       this._coyoteTime = o.coyoteTime ?? 0.1;
+      this._wallCoyoteTime = o.wallCoyoteTime ?? 0;
+      this._wallCoyoteTimer = o.wallCoyoteTimer ?? 0;
+      this._wasOnWall = o.wasOnWall ?? false;
+      this._lastWallSide = o.lastWallSide ?? 0;
       this._jumpBuffer = o.jumpBuffer ?? 0.1;
       this._maxJumps = o.maxJumps;
       this._wallSlide = o.wallSlide;
@@ -750,6 +815,7 @@ export default function (parentClass) {
             { name: "$Max fall speed",  value: this._maxFallSpeed,   onedit: v => { this._maxFallSpeed   = +v; } },
             { name: "$Max jumps",       value: this._maxJumps,       onedit: v => { this._maxJumps = Math.max(0, Math.floor(+v)); } },
             { name: "$Coyote time",     value: this._coyoteTime,     onedit: v => { this._coyoteTime     = Math.max(0, +v); } },
+            { name: "$Wall coyote time", value: this._wallCoyoteTime, onedit: v => { this._wallCoyoteTime = Math.max(0, +v); } },
             { name: "$Jump buffer",     value: this._jumpBuffer,     onedit: v => { this._jumpBuffer     = Math.max(0, +v); } },
             { name: "$Variable jump",   value: this._variableJump,   onedit: v => { this._variableJump   = !!v; } },
             { name: "$Jump release damping", value: this._jumpReleaseDamping, onedit: v => { this._jumpReleaseDamping = Math.max(0, Math.min(1, +v)); } },

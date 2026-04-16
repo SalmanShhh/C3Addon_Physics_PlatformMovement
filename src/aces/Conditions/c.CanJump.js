@@ -1,7 +1,7 @@
 export const config = {
   listName: "Can jump",
   displayText: "Can jump",
-  description: "Check if the character is able to jump right now.",
+  description: "True when a jump is possible right now (on ground, in coyote window, or has jumps left).",
   isInvertible: true,
   params: [],
 };

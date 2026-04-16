@@ -1,8 +1,7 @@
 export const config = {
   listName: "Set on floor",
   displayText: "Set on floor to {0}",
-  description:
-    "Override the floor contact state for this tick. Useful for moving platforms or custom collision logic. Setting true also resets jumps remaining and clears coyote/air timers as if the character just landed.",
+  description: "Force the character to be treated as grounded this tick. Use with moving platforms where Physics contact alone is unreliable.",
   params: [
     {
       id: "onFloor",

@@ -1,7 +1,7 @@
 export const config = {
   listName: "Set max jumps",
   displayText: "Set max jumps to {0}",
-  description: "Set how many times the character can jump before landing.",
+  description: "How many times the character can jump before touching the ground. Set to 2 to unlock double jump.",
   params: [
     {
       id: "count",

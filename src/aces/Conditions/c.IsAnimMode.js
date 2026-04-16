@@ -1,7 +1,7 @@
 export const config = {
   listName: "Compare animation mode",
   displayText: "Animation mode is {0}",
-  description: "Check the current animation mode.",
+  description: "True when the animation state matches the selected option. Use to drive sprite animation switching without tracking state manually.",
   isInvertible: true,
   params: [
     {

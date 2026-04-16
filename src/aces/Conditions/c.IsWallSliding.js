@@ -1,7 +1,7 @@
 export const config = {
   listName: "Is wall sliding",
   displayText: "Is wall sliding",
-  description: "Check if the character is sliding down a wall.",
+  description: "True while sliding down a wall.",
   isInvertible: true,
   params: [],
 };

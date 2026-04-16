@@ -38,5 +38,10 @@
     "added": "",
     "changed": "Rename the knockback feature to a more general \"driven move\" ",
     "fixed": ""
+  },
+  "1.4.3.0": {
+    "added": "- Add wall-coyote support and improve ACE docs/usability hints. \n- Add IsAbilityEnabled to include the new wall Coyote Time.\n- ",
+    "changed": "",
+    "fixed": "- refine descriptions across many conditions, actions and expressions to provide clearer usage hints"
   }
 }

@@ -1,7 +1,7 @@
 export const config = {
   listName: "Set deceleration",
   displayText: "Set deceleration to {0}",
-  description: "Override Deceleration at runtime.",
+  description: "How quickly the character stops when releasing input. Low = icy sliding, high = instant stop.",
   params: [
     {
       id: "decel",

@@ -46,6 +46,10 @@
             "name": "Coyote Time",
             "desc": "Seconds after leaving a floor edge during which a jump is still allowed."
           },
+          "wallCoyoteTime": {
+            "name": "Wall Coyote Time",
+            "desc": "Seconds after leaving a wall during which a wall jump is still allowed. Mirrors floor coyote time for walls. Set to 0 to disable."
+          },
           "jumpBuffer": {
             "name": "Jump Buffer",
             "desc": "Seconds a jump input is remembered before landing."
@@ -74,6 +78,10 @@
             "name": "Variable Jump Height",
             "desc": "Hold the jump button for a higher jump, release it early for a shorter one."
           },
+          "jumpReleaseDamping": {
+            "name": "Jump Release Damping",
+            "desc": "Percentage (0–100) of upward velocity retained when the jump button is released early. 50 = keep half speed; 0 = instant cut; 100 = no variable height effect."
+          },
           "debugMode": {
             "name": "Debug Mode",
             "desc": "Print contact classification and velocity state to the browser console each tick."
@@ -91,10 +99,32 @@
               }
             }
           },
+          "SetCoyoteTime": {
+            "list-name": "Set coyote time",
+            "display-text": "Set coyote time to {0}",
+            "description": "How long after walking off a ledge the player can still jump. Makes platforming more forgiving. Set to 0 to disable.",
+            "params": {
+              "time": {
+                "name": "Time",
+                "desc": "Coyote time duration in seconds."
+              }
+            }
+          },
+          "SetDebugMode": {
+            "list-name": "Set debug mode",
+            "display-text": "Set debug mode to {0}",
+            "description": "Turn debug console output on or off. Prints movement state to the browser console (F12) — handy when tuning values.",
+            "params": {
+              "enabled": {
+                "name": "Enabled",
+                "desc": "Whether debug mode is active."
+              }
+            }
+          },
           "SetDeceleration": {
             "list-name": "Set deceleration",
             "display-text": "Set deceleration to {0}",
-            "description": "Override Deceleration at runtime.",
+            "description": "How quickly the character stops when releasing input. Low = icy sliding, high = instant stop.",
             "params": {
               "decel": {
                 "name": "Deceleration",
@@ -110,6 +140,17 @@
               "gravity": {
                 "name": "Gravity",
                 "desc": "Extra downward pull acceleration in px/s². (0 = use Physics gravity only)."
+              }
+            }
+          },
+          "SetJumpBuffer": {
+            "list-name": "Set jump buffer",
+            "display-text": "Set jump buffer to {0}",
+            "description": "How early before landing a jump press is accepted. Prevents missed jumps when the button is pressed slightly too soon. Set to 0 to disable.",
+            "params": {
+              "time": {
+                "name": "Time",
+                "desc": "Jump buffer duration in seconds."
               }
             }
           },
@@ -149,7 +190,7 @@
           "ResetJumps": {
             "list-name": "Reset jumps",
             "display-text": "Reset jumps",
-            "description": "Give back all jumps as if the character just landed.",
+            "description": "Give all jumps back, as if the character just landed.",
             "params": {}
           },
           "SetJumpReleaseDamping": {
@@ -166,11 +207,33 @@
           "SetMaxJumps": {
             "list-name": "Set max jumps",
             "display-text": "Set max jumps to {0}",
-            "description": "Set how many times the character can jump before landing.",
+            "description": "How many times the character can jump before touching the ground. Set to 2 to unlock double jump.",
             "params": {
               "count": {
                 "name": "Count",
                 "desc": "1 = normal, 2 = double jump, etc."
+              }
+            }
+          },
+          "SetVariableJumpHeight": {
+            "list-name": "Set variable jump height",
+            "display-text": "Set variable jump height to {0}",
+            "description": "Tap for a short hop, hold for a full jump. Disable for a fixed jump height every time.",
+            "params": {
+              "enabled": {
+                "name": "Enabled",
+                "desc": "Whether variable jump height is active."
+              }
+            }
+          },
+          "SetWallCoyoteTime": {
+            "list-name": "Set wall coyote time",
+            "display-text": "Set wall coyote time to {0}",
+            "description": "How long after leaving a wall the player can still wall jump. Forgives slightly late button presses. Set to 0 to disable.",
+            "params": {
+              "time": {
+                "name": "Time",
+                "desc": "Wall coyote time duration in seconds."
               }
             }
           },
@@ -185,6 +248,17 @@
               }
             }
           },
+          "SetWallJumpStrength": {
+            "list-name": "Set wall jump strength",
+            "display-text": "Set wall jump strength to {0}",
+            "description": "How far the character pushes away from the wall on a wall jump. Higher = wider arc — use to tune the feel of vertical shaft climbing.",
+            "params": {
+              "strength": {
+                "name": "Strength",
+                "desc": "Horizontal wall jump impulse in px/s."
+              }
+            }
+          },
           "SetWallSlide": {
             "list-name": "Set wall slide",
             "display-text": "Set wall slide to {0}",
@@ -196,10 +270,21 @@
               }
             }
           },
+          "SetWallSlideSpeed": {
+            "list-name": "Set wall slide speed",
+            "display-text": "Set wall slide speed to {0}",
+            "description": "How fast the character slides down a wall. Lower = slower, more controlled. e.g. set very low for a sticky-wall ability.",
+            "params": {
+              "speed": {
+                "name": "Speed",
+                "desc": "Maximum fall speed (px/s) while wall sliding."
+              }
+            }
+          },
           "ApplyImpulse": {
             "list-name": "Apply impulse",
             "display-text": "Apply impulse ({0}, {1})",
-            "description": "Add an instantaneous velocity impulse to the current Physics velocity. The behavior's deceleration will naturally taper it off.",
+            "description": "Add a push to the character's current velocity, they keep control and deceleration tapers it off.",
             "params": {
               "vx": {
                 "name": "Vector X",
@@ -230,10 +315,29 @@
               }
             }
           },
+          "SetDrivenMove": {
+            "list-name": "Apply driven movement",
+            "display-text": "Apply driven movement to ({0}, {1}) for {2}s",
+            "description": "Take control of the character's movement and lock player input for a short time. Use for dashes, heavy knockback, or launch pads.",
+            "params": {
+              "vx": {
+                "name": "Vector X",
+                "desc": "Horizontal velocity in px/s. Positive = right."
+              },
+              "vy": {
+                "name": "Vector Y",
+                "desc": "Vertical velocity in px/s. Negative = up."
+              },
+              "duration": {
+                "name": "Duration",
+                "desc": "Seconds to suppress player input."
+              }
+            }
+          },
           "SetEnabled": {
             "list-name": "Set enabled",
             "display-text": "Set enabled to {0}",
-            "description": "Fully enable or disable the behavior.",
+            "description": "Turn the whole behavior on or off.",
             "params": {
               "enabled": {
                 "name": "Enabled",
@@ -244,7 +348,7 @@
           "SetFreezeAxis": {
             "list-name": "Set freeze axis",
             "display-text": "Freeze {0} axis: {1}",
-            "description": "Lock an axis so the character cannot move on it.",
+            "description": "Lock movement on one or both axes.",
             "params": {
               "axis": {
                 "name": "Axis",
@@ -264,7 +368,7 @@
           "SetIgnoreInput": {
             "list-name": "Set ignore input",
             "display-text": "Set ignore input to {0}",
-            "description": "When true, all input is ignored until re-enabled.",
+            "description": "Block all character input without stopping physics.",
             "params": {
               "ignore": {
                 "name": "Ignore",
@@ -275,7 +379,7 @@
           "SetOnFloor": {
             "list-name": "Set on floor",
             "display-text": "Set on floor to {0}",
-            "description": "Override the floor contact state for this tick. Useful for moving platforms or custom collision logic. Setting true also resets jumps remaining and clears coyote/air timers as if the character just landed.",
+            "description": "Force the character to be treated as grounded this tick. Use with moving platforms where Physics contact alone is unreliable.",
             "params": {
               "onFloor": {
                 "name": "On floor",
@@ -323,7 +427,7 @@
           "SimulateControl": {
             "list-name": "Simulate control",
             "display-text": "Simulate {0}",
-            "description": "Tell the behavior to act as if the player pressed a movement key this tick. Use 'Left' and 'Right' every tick the button is held. Use 'Jump' on the frame the button is pressed and 'Jump release' on the frame it is released.",
+            "description": "Simulate one of the movement controls being held down.",
             "params": {
               "control": {
                 "name": "Control",
@@ -349,7 +453,7 @@
           "CanJump": {
             "list-name": "Can jump",
             "display-text": "Can jump",
-            "description": "Check if the character is able to jump right now.",
+            "description": "True when a jump is possible right now (on ground, in coyote window, or has jumps left).",
             "params": {}
           },
           "CompareSpeed": {
@@ -421,13 +525,14 @@
           "IsAbilityEnabled": {
             "list-name": "Is Movement Ability enabled",
             "display-text": "Is {0} enabled",
-            "description": "Check if a specific platformer ability is currently enabled.",
+            "description": "True if the chosen ability is currently on. Use to show unlock icons in an ability upgrade UI.",
             "params": {
               "ability": {
                 "name": "Ability",
                 "desc": "The ability to check.",
                 "items": {
                   "coyote_time": "Coyote Time",
+                  "wall_coyote_time": "Wall Coyote Time",
                   "wall_sliding": "Wall Sliding",
                   "wall_jump": "Wall Jump",
                   "variable_jump": "Variable Jump"
@@ -438,7 +543,7 @@
           "IsAnimMode": {
             "list-name": "Compare animation mode",
             "display-text": "Animation mode is {0}",
-            "description": "Check the current animation mode.",
+            "description": "True when the animation state matches the selected option. Use to drive sprite animation switching without tracking state manually.",
             "params": {
               "mode": {
                 "name": "Mode",
@@ -457,7 +562,7 @@
           "IsAxisFrozen": {
             "list-name": "Is axis frozen",
             "display-text": "Is {0} axis frozen",
-            "description": "Check if an axis is currently frozen.",
+            "description": "True if the chosen axis is currently locked. Use to check whether a stasis or freeze effect is still active.",
             "params": {
               "axis": {
                 "name": "Axis",
@@ -472,7 +577,7 @@
           "IsDrivenMoving": {
             "list-name": "Is driven moving",
             "display-text": "Is driven moving",
-            "description": "True while the character is being externally driven (input suppressed by a Set Driven Move call). Use to block other actions during dashes, knockback, or launches.",
+            "description": "True while a driven move (e.g. dash or knockback) is in progress. Use to lock out other actions until it finishes.",
             "params": {}
           },
           "IsEnabled": {
@@ -490,7 +595,7 @@
           "IsFalling": {
             "list-name": "Is falling",
             "display-text": "Is falling",
-            "description": "Check if the character is falling through the air.",
+            "description": "True while the character is moving downward in the air.",
             "params": {}
           },
           "IsIgnoringInput": {
@@ -502,31 +607,31 @@
           "IsJumping": {
             "list-name": "Is jumping",
             "display-text": "Is jumping",
-            "description": "Check if the character is currently moving upward from a jump.",
+            "description": "True while the character is moving upward after a jump.",
             "params": {}
           },
           "IsMoving": {
             "list-name": "Is moving",
             "display-text": "Is moving",
-            "description": "Check if the character is moving at all.",
+            "description": "True whenever the character has any movement.",
             "params": {}
           },
           "IsOnCeiling": {
             "list-name": "Is on ceiling",
             "display-text": "Is on ceiling",
-            "description": "Check if the character is touching a ceiling.",
+            "description": "True when touching a ceiling. Use to cut upward velocity when the character bumps their head.",
             "params": {}
           },
           "IsOnFloor": {
             "list-name": "Is on floor",
             "display-text": "Is on floor",
-            "description": "Check if the character is standing on the ground.",
+            "description": "True when touching the ground.",
             "params": {}
           },
           "IsOnWall": {
             "list-name": "Is on wall",
             "display-text": "Is on wall ({0})",
-            "description": "Check if the character is touching a wall.",
+            "description": "True when touching the chosen wall side. Use to play a wall-grab or push animation.",
             "params": {
               "side": {
                 "name": "Side",
@@ -542,7 +647,7 @@
           "IsWallSliding": {
             "list-name": "Is wall sliding",
             "display-text": "Is wall sliding",
-            "description": "Check if the character is sliding down a wall.",
+            "description": "True while sliding down a wall.",
             "params": {}
           },
           "OnDoubleJumped": {
@@ -573,6 +678,12 @@
             "list-name": "On landed",
             "display-text": "On landed",
             "description": "Triggered when the character touches the ground after being in the air.",
+            "params": {}
+          },
+          "OnLeftWallContact": {
+            "list-name": "On left wall contact",
+            "display-text": "On left wall contact",
+            "description": "Fires when the character leaves a wall without landing. The wall coyote window opens here — use to start a wall-coyote timer indicator.",
             "params": {}
           },
           "OnWallJumped": {
@@ -656,6 +767,11 @@
           "WallContactSide": {
             "translated-name": "WallContactSide",
             "description": "Side of the most recent wall contact: -1 = left wall, 1 = right wall, 0 = no wall.",
+            "params": {}
+          },
+          "WallCoyoteTimer": {
+            "translated-name": "WallCoyoteTimer",
+            "description": "Seconds left in the wall coyote window. Use to show a brief visual cue that a wall jump is still possible.",
             "params": {}
           }
         }

@@ -43,5 +43,10 @@
     "added": "- Add wall-coyote support and improve ACE docs/usability hints. \n- Add IsAbilityEnabled to include the new wall Coyote Time.\n- ",
     "changed": "",
     "fixed": "- refine descriptions across many conditions, actions and expressions to provide clearer usage hints"
+  },
+  "1.5.0.0": {
+    "added": "- Add Actions to Toggle whether character is touching a ceiling.",
+    "changed": "- Knockback, given a more descriptive name to understand its versatility better. \"Driven Movement\"\n",
+    "fixed": ""
   }
 }

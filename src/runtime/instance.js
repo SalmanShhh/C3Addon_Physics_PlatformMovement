@@ -37,6 +37,7 @@ export default function (parentClass) {
       this._onWallRight = false;
       this._floorContactCount = 0;
       this._wallContactSide = 0;
+      this._wasOnCeiling = false;
 
       // Runtime state — jumps and timers
       this._jumpsRemaining = this._maxJumps;
@@ -70,6 +71,7 @@ export default function (parentClass) {
 
       // Driven velocity & simulated jump tracking
       this._drivenTimer = 0;
+      this._drivenVx = 0;
       this._simulatedJumpHeld = false;
       this._prevSimulatedJumpHeld = false;
 
@@ -320,6 +322,8 @@ export default function (parentClass) {
 
         // Clamp to max speed
         vx = Math.max(-this._maxSpeed, Math.min(this._maxSpeed, vx));
+      } else {
+        vx = this._drivenVx;
       }
 
       // ── FACING ──────────────────────────────────────────────────────────
@@ -382,8 +386,16 @@ export default function (parentClass) {
       }
 
       // ── CEILING BONK ────────────────────────────────────────────────────
-      if (this._onCeiling && currentVy < 0) {
-        currentVy = 0;
+      if (this._onCeiling) {
+        if (!this._wasOnCeiling) {
+          this._trigger("OnHitCeiling");
+        }
+        if (currentVy < 0) {
+          currentVy = 0;
+        }
+        this._wasOnCeiling = true;
+      } else {
+        this._wasOnCeiling = false;
       }
 
       // ── GRAVITY ─────────────────────────────────────────────────────────
@@ -425,7 +437,7 @@ export default function (parentClass) {
         const wallStr = this._onWallLeft ? "L" : this._onWallRight ? "R" : "none";
         const facingStr = this._facing === 1 ? "R" : "L";
         console.log(
-          `[GroundForce] floor=${this._onFloor ? 1 : 0}(${this._floorContactCount}) wall=${wallStr} ceil=${this._onCeiling} | vx=${vx.toFixed(1)} vy=${currentVy.toFixed(1)} | jumps=${this._jumpsRemaining}/${this._maxJumps} coyote=${this._coyoteTimer.toFixed(3)} buf=${this._jumpBufferTimer.toFixed(3)} air=${this._airTime.toFixed(2)}s | slide=${this._isWallSliding} facing=${facingStr}`
+          `[Physics Platform Movement] floor=${this._onFloor ? 1 : 0}(${this._floorContactCount}) wall=${wallStr} ceil=${this._onCeiling} | vx=${vx.toFixed(1)} vy=${currentVy.toFixed(1)} | jumps=${this._jumpsRemaining}/${this._maxJumps} coyote=${this._coyoteTimer.toFixed(3)} buf=${this._jumpBufferTimer.toFixed(3)} air=${this._airTime.toFixed(2)}s | slide=${this._isWallSliding} facing=${facingStr}`
         );
       }
 
@@ -543,6 +555,19 @@ export default function (parentClass) {
       const val = !!freeze;
       if (key === "horizontal" || key === "both") this._freezeX = val;
       if (key === "vertical" || key === "both") this._freezeY = val;
+    }
+
+    /**
+     * Override the ceiling contact state for this tick.
+     * Setting true triggers the ceiling bonk (zeroes upward velocity) and fires OnHitCeiling on the first contact tick.
+     * Note: _onCeiling is reclassified each tick from Physics contacts, so call every tick to sustain the override.
+     * @param {boolean} onCeiling
+     */
+    setOnCeiling(onCeiling) {
+      this._onCeiling = !!onCeiling;
+      if (!onCeiling) {
+        this._wasOnCeiling = false;
+      }
     }
 
     /**
@@ -712,9 +737,10 @@ export default function (parentClass) {
      * @param {number} duration - Seconds to suppress input
      */
     drivenVelocity(vx, vy, duration) {
+      this._drivenVx = vx;
+      this._drivenTimer = Math.max(0, duration);
       if (this._phys) {
         this._phys.setVelocity(vx, vy);
-        this._drivenTimer = Math.max(0, duration);
       }
     }
 
@@ -754,6 +780,7 @@ export default function (parentClass) {
         freezeX: this._freezeX,
         freezeY: this._freezeY,
         drivenTimer: this._drivenTimer,
+        drivenVx: this._drivenVx,
       };
     }
 
@@ -792,6 +819,7 @@ export default function (parentClass) {
       this._freezeX = o.freezeX ?? false;
       this._freezeY = o.freezeY ?? false;
       this._drivenTimer = o.drivenTimer ?? o.knockbackTimer ?? 0;
+      this._drivenVx = o.drivenVx ?? 0;
     }
 
     _getDebuggerProperties() {

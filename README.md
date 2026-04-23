@@ -1,17 +1,15 @@
 <img src="./src/icon.svg" width="100" /><br>
 # Physics Platformer
 <i>Physics-based platformer movement — run, jump, wall-slide, and interact using the built-in Physics behavior.</i> <br>
-### Version 1.4.3.0
+### Version 1.5.0.0
 
-[<img src="https://placehold.co/200x50/4493f8/FFF?text=Download&font=montserrat" width="200"/>](https://github.com/SalmanShhh/C3Addon_platformer_physics/releases/download/salmanshh_platformer_physics-1.4.3.0.c3addon/salmanshh_platformer_physics-1.4.3.0.c3addon)
+[<img src="https://placehold.co/200x50/4493f8/FFF?text=Download&font=montserrat" width="200"/>](https://github.com/SalmanShhh/C3Addon_platformer_physics/releases/download/salmanshh_platformer_physics-1.5.0.0.c3addon/salmanshh_platformer_physics-1.5.0.0.c3addon)
 <br>
 <sub> [See all releases](https://github.com/SalmanShhh/C3Addon_platformer_physics/releases) </sub> <br>
 
-#### What's New in 1.4.3.0
-- **Added:** - Add wall-coyote support and improve ACE docs/usability hints.
-- **Added:** - Add IsAbilityEnabled to include the new wall Coyote Time.
-- **Added:** -
-- **Fixed:** - refine descriptions across many conditions, actions and expressions to provide clearer usage hints
+#### What's New in 1.5.0.0
+- **Added:** - Add Actions to Toggle whether character is touching a ceiling.
+- **Changed:** - Knockback, given a more descriptive name to understand its versatility better. "Driven Movement"
 
 <sub>[View full changelog](#changelog)</sub>
 
@@ -92,10 +90,10 @@ npm run dev
 | Set wall slide speed | How fast the character slides down a wall. Lower = slower, more controlled. e.g. set very low for a sticky-wall ability. | Speed             *(number)* <br> |
 | Apply impulse | Add a push to the character's current velocity, they keep control and deceleration tapers it off. | Vector X             *(number)* <br>Vector Y             *(number)* <br> |
 | Set driven move | Temporarily drives the character at the given velocity, suppressing movement input for the duration. Use for dashes, knockback, launch pads, or any externally driven movement. Gravity, wall slide, and max fall speed still apply. | Vector X             *(number)* <br>Vector Y             *(number)* <br>Duration             *(number)* <br> |
-| Apply driven movement | Take control of the character's movement and lock player input for a short time. Use for dashes, heavy knockback, or launch pads. | Vector X             *(number)* <br>Vector Y             *(number)* <br>Duration             *(number)* <br> |
 | Set enabled | Turn the whole behavior on or off. | Enabled             *(boolean)* <br> |
 | Set freeze axis | Lock movement on one or both axes. | Axis             *(combo)* <br>Freeze             *(boolean)* <br> |
 | Set ignore input | Block all character input without stopping physics. | Ignore             *(boolean)* <br> |
+| Set on ceiling | Force the character to be treated as touching a ceiling this tick. Use with moving platforms or ceiling colliders where Physics contact alone is unreliable. | On ceiling             *(boolean)* <br> |
 | Set on floor | Force the character to be treated as grounded this tick. Use with moving platforms where Physics contact alone is unreliable. | On floor             *(boolean)* <br> |
 | Set vector | Set horizontal and vertical speed in px/s. | Vector X             *(number)* <br>Vector Y             *(number)* <br> |
 | Set vector X | Directly set the horizontal Physics velocity (px/s). | Vector X             *(number)* <br> |
@@ -129,6 +127,7 @@ npm run dev
 | On double jumped | Triggered when the character uses an extra mid-air jump. |  |
 | On facing changed | Triggered when the character turns around. |  |
 | On fallen off | Triggered when the character walks off a ledge. |  |
+| On hit ceiling | Triggered when the character first makes contact with a ceiling. |  |
 | On jumped | Triggered every time the character jumps. |  |
 | On landed | Triggered when the character touches the ground after being in the air. |  |
 | On left wall contact | Fires when the character leaves a wall without landing. The wall coyote window opens here — use to start a wall-coyote timer indicator. |  |
@@ -159,6 +158,10 @@ npm run dev
 
 ---
 ## Changelog
+
+**1.5.0.0**
+- **Added:** - Add Actions to Toggle whether character is touching a ceiling.
+- **Changed:** - Knockback, given a more descriptive name to understand its versatility better. "Driven Movement"
 
 **1.4.3.0**
 - **Added:** - Add wall-coyote support and improve ACE docs/usability hints.

@@ -1,6 +1,6 @@
 # Platformer Physics - Complete Guide
 
-**Platformer Physics** is a Construct 3 behavior that replicates the full ACE surface of the built-in Platform behavior — same property names, same action signatures, same conditions and expressions — while driving all movement through the built-in **Physics** behavior. The character becomes a real rigid body: it pushes crates, rides moving platforms, reacts to explosions, and interacts with joints, all while feeling like a standard Platform-behavior character to event sheet developers. Swapping from the built-in Platform behavior to Platformer Physics requires only changing the behavior reference — no ACE rewiring.
+**Platformer Physics** is a Construct 3 behavior that replicates the full ACE surface of the built-in Platform behavior - same property names, same action signatures, same conditions and expressions - while driving all movement through the built-in **Physics** behavior. The character becomes a real rigid body: it pushes crates, rides moving platforms, reacts to explosions, and interacts with joints, all while feeling like a standard Platform-behavior character to event sheet developers. Swapping from the built-in Platform behavior to Platformer Physics requires only changing the behavior reference - no ACE rewiring.
 
 ---
 
@@ -42,11 +42,11 @@ Platformer Physics replaces the kinematic solver with the Physics engine while p
 
 **Physics behavior is required.** The object must have both the Platformer Physics behavior and the built-in Physics behavior attached. If Physics is missing, the behavior logs a warning and disables itself.
 
-**Platformer Physics does not own Physics world gravity.** The `Gravity` property applies an *additional* per-instance downward acceleration on top of whatever the Physics world gravity is doing. This means you can use Physics world gravity alone, Platformer Physics gravity alone, or both combined — see §9.
+**Platformer Physics does not own Physics world gravity.** The `Gravity` property applies an *additional* per-instance downward acceleration on top of whatever the Physics world gravity is doing. This means you can use Physics world gravity alone, Platformer Physics gravity alone, or both combined - see §9.
 
 **Platformer Physics does not render anything.** Sprite animation (run, jump, fall, wall-slide frames) and horizontal flipping are the developer's responsibility. Use the `OnFacingChanged` trigger and `IsFalling`/`IsJumping` conditions to drive animation state.
 
-**Contact classification is geometric, not normal-based.** The built-in Platform behavior uses collision normals from C3's internal engine. Platformer Physics cannot access those — it classifies contacts by comparing contact point positions to the instance bounding box. See §8.
+**Contact classification is geometric, not normal-based.** The built-in Platform behavior uses collision normals from C3's internal engine. Platformer Physics cannot access those - it classifies contacts by comparing contact point positions to the instance bounding box. See §8.
 
 ---
 
@@ -56,7 +56,7 @@ Platformer Physics replaces the kinematic solver with the Physics engine while p
 |---|---|
 | **Physics sibling** | The built-in Physics behavior on the same object. Platformer Physics accesses it directly via `this.instance.behaviors.Physics`, using C3's standard behavior key lookup. |
 | **Contact classification** | Each Physics contact point is classified as floor, ceiling, or wall based on its position relative to the instance center. |
-| **Acceleration model** | Horizontal speed ramps toward Max Speed by Acceleration per second, and decays toward zero by Deceleration per second — matching the built-in Platform behavior exactly. |
+| **Acceleration model** | Horizontal speed ramps toward Max Speed by Acceleration per second, and decays toward zero by Deceleration per second - matching the built-in Platform behavior exactly. |
 | **Coyote time** | A grace window after leaving a ledge during which the character can still jump. |
 | **Jump buffer** | A grace window that remembers a jump press before landing, firing it automatically on the next landing tick. |
 | **SimulateControl** | The same action as the built-in Platform behavior. Feed directional and jump inputs programmatically instead of (or alongside) keyboard controls. |
@@ -65,19 +65,19 @@ Platformer Physics replaces the kinematic solver with the Physics engine while p
 
 ### Scenarios where Platformer Physics excels
 
-**Classic 2D side-scroller** — Drop-in replacement for the built-in Platform behavior. The player character gains Physics interaction with tumbling barrels, swinging crates, and breakable terrain at zero extra event-sheet cost.
+**Classic 2D side-scroller** - Drop-in replacement for the built-in Platform behavior. The player character gains Physics interaction with tumbling barrels, swinging crates, and breakable terrain at zero extra event-sheet cost.
 
-**Metroidvania with physics puzzles** — Wall jump and double jump are unlockable upgrades. Call `SetMaxJumps(2)` and `SetWallJump(true)` when the player acquires abilities. The character simultaneously interacts with Physics puzzles as a real rigid body.
+**Metroidvania with physics puzzles** - Wall jump and double jump are unlockable upgrades. Call `SetMaxJumps(2)` and `SetWallJump(true)` when the player acquires abilities. The character simultaneously interacts with Physics puzzles as a real rigid body.
 
-**Multiplayer brawler** — Each fighter has its own Platformer Physics instance with isolated velocity, jump count, and coyote state. Fighters can physically collide with and push each other through Physics, while each responds to its own player input via `SimulateControl`.
+**Multiplayer brawler** - Each fighter has its own Platformer Physics instance with isolated velocity, jump count, and coyote state. Fighters can physically collide with and push each other through Physics, while each responds to its own player input via `SimulateControl`.
 
-**Platformer with AI enemies** — AI controllers call `SimulateControl(Left)`, `SimulateControl(Right)`, and `SimulateControl(Jump)` every tick, identical to how the player's input feeds the behavior. No separate movement system needed.
+**Platformer with AI enemies** - AI controllers call `SimulateControl(Left)`, `SimulateControl(Right)`, and `SimulateControl(Jump)` every tick, identical to how the player's input feeds the behavior. No separate movement system needed.
 
-**Procedural trap room** — Explosions call `SetVectorY(-800)` to launch the character. The arc is Physics-real. Platformer Physics resumes normal control on `OnLanded`.
+**Procedural trap room** - Explosions call `SetVectorY(-800)` to launch the character. The arc is Physics-real. Platformer Physics resumes normal control on `OnLanded`.
 
-**Mobile game with touch controls** — On-screen buttons call `SimulateControl` on press/release, identical to the built-in Platform behavior's touch workflow. Default controls are disabled.
+**Mobile game with touch controls** - On-screen buttons call `SimulateControl` on press/release, identical to the built-in Platform behavior's touch workflow. Default controls are disabled.
 
-**Rhythm platformer** — `SetIgnoreInput(true)` during scripted sequences locks movement while a cutscene plays. The character stands still on Physics ground as a proper rigid body — no flickering or drift.
+**Rhythm platformer** - `SetIgnoreInput(true)` during scripted sequences locks movement while a cutscene plays. The character stands still on Physics ground as a proper rigid body — no flickering or drift.
 
 ---
 
@@ -136,7 +136,7 @@ Platformer Physics applies its own downward acceleration every tick **on top of*
 |---|---|---|---|
 | Physics gravity only | `0` | `10` (default) | Character falls at same rate as all other Physics objects |
 | PlatformerPhysics gravity only | e.g. `1500` | `0` | Platformer-style gravity; other Physics objects are weightless unless they set their own |
-| Combined | non-zero | non-zero | Character falls faster than other objects — use for a heavy-feel character |
+| Combined | non-zero | non-zero | Character falls faster than other objects - use for a heavy-feel character |
 
 To zero out Physics world gravity at runtime:
 ```
@@ -207,7 +207,7 @@ Platformer Physics uses an **acceleration/deceleration model** identical to the 
 3. When input is released, it decelerates toward zero by `Deceleration × dt` per tick.
 4. The result is clamped to `±MaxSpeed` and written back via `setVelocity()`.
 
-This means `Acceleration = 1500` and `MaxSpeed = 200` takes `200 / 1500 ≈ 0.13 seconds` to reach full speed — matching the built-in Platform behavior exactly.
+This means `Acceleration = 1500` and `MaxSpeed = 200` takes `200 / 1500 ≈ 0.13 seconds` to reach full speed - matching the built-in Platform behavior exactly.
 
 ### Simulate Control
 
@@ -396,7 +396,7 @@ Trigger: PlatformerPhysics -> On wall jumped
 
 ### Wall Coyote Time
 
-**Wall Coyote Time** (default `0` seconds, disabled) gives the player a brief window after leaving a wall during which a wall jump is still allowed. This mirrors floor coyote time and makes wall-jumping feel more forgiving — if the player is a few frames late pressing jump after sliding off a wall, it still works.
+**Wall Coyote Time** (default `0` seconds, disabled) gives the player a brief window after leaving a wall during which a wall jump is still allowed. This mirrors floor coyote time and makes wall-jumping feel more forgiving - if the player is a few frames late pressing jump after sliding off a wall, it still works.
 
 Enable it by setting **Wall Coyote Time** in the Properties Bar (or with `SetWallCoyoteTime` at runtime):
 
@@ -437,7 +437,7 @@ The `WallContactSide` expression returns `-1` (left wall), `1` (right wall), or 
 
 ### Coyote Time
 
-**Coyote Time** (default 0.1 seconds) allows the player to jump for a brief window after walking off a ledge. This makes platforming feel more forgiving — if the player is a few frames late pressing jump, it still works:
+**Coyote Time** (default 0.1 seconds) allows the player to jump for a brief window after walking off a ledge. This makes platforming feel more forgiving - if the player is a few frames late pressing jump, it still works:
 
 ```
 // Increase coyote time for a more forgiving game
@@ -482,7 +482,7 @@ Each contact point is assigned to **exactly one** category. This mutual-exclusio
 
 ### Why normalization matters
 
-Without normalization, a wide, flat character would have contacts near the bottom that are slightly to the side — these would incorrectly classify as wall contacts. By normalizing by `halfWidth` and `halfHeight` separately, the algorithm compares each contact's proportional distance to each edge. A contact that is 90 % of the way to the bottom edge and only 40 % of the way to the side edge is unambiguously a floor contact regardless of the sprite's aspect ratio.
+Without normalisation, a wide, flat character would have contacts near the bottom that are slightly to the side - these would incorrectly classify as wall contacts. By normalizing by `halfWidth` and `halfHeight` separately, the algorithm compares each contact's proportional distance to each edge. A contact that is 90 % of the way to the bottom edge and only 40 % of the way to the side edge is unambiguously a floor contact regardless of the sprite's aspect ratio.
 
 ### Slope Tolerance
 
@@ -509,7 +509,7 @@ The **Slope Tolerance** property is read from editor properties but is **not app
 
 Platformer Physics applies **additional** downward acceleration on top of Physics world gravity. This gives three approaches:
 
-**Approach 1 — Physics gravity only** (`Gravity = 0`): Use the Physics world gravity panel setting. Simplest setup. All objects fall at the same rate.
+**Approach 1 - Physics gravity only** (`Gravity = 0`): Use the Physics world gravity panel setting. Simplest setup. All objects fall at the same rate.
 
 ```
 // In Physics behavior properties or via action:
@@ -517,7 +517,7 @@ Platformer Physics applies **additional** downward acceleration on top of Physic
 // Platformer Physics Gravity = 0
 ```
 
-**Approach 2 — Platformer Physics gravity only** (`Gravity = 1500`, Physics world gravity = 0): Platformer Physics fully owns falling. Matches the built-in Platform behavior's gravity model exactly.
+**Approach 2 - Platformer Physics gravity only** (`Gravity = 1500`, Physics world gravity = 0): Platformer Physics fully owns falling. Matches the built-in Platform behavior's gravity model exactly.
 
 ```
 Event: On start of layout
@@ -525,7 +525,7 @@ Event: On start of layout
   Action: PlatformerPhysics -> Set gravity to 1500
 ```
 
-**Approach 3 — Combined** (both > 0): The character falls faster than other Physics objects. Use for heavy-feeling characters in a world with light Physics gravity.
+**Approach 3 - Combined** (both > 0): The character falls faster than other Physics objects. Use for heavy-feeling characters in a world with light Physics gravity.
 
 ### Max Fall Speed
 
@@ -607,9 +607,9 @@ Event: Every tick
 | **Set ignore input** `enabled` | When true, all simulated input is ignored. Gravity and physics continue. |
 | **Set enabled** `enabled` | Fully enable/disable the behavior. Disabled = stops modifying Physics velocity entirely. |
 | **Set freeze axis** `axis, freeze` | Lock Horizontal, Vertical, or Both axes. Frozen axes have velocity forced to zero every tick. |
-| **Set on floor** `value` | Override the floor contact flag for this tick. `true` also resets jumps remaining, coyote timer, and air time. Must be called every tick to sustain — Physics contacts reclassify the flag each frame. |
+| **Set on floor** `value` | Override the floor contact flag for this tick. `true` also resets jumps remaining, coyote timer, and air time. Must be called every tick to sustain - Physics contacts reclassify the flag each frame. |
 
-> **Choose between `Apply impulse` and `Set driven move`:** `Apply impulse` is additive — the character retains input control and natural deceleration tapers the extra velocity. `Set driven move` replaces velocity and locks input for the duration. Use impulse for light hits and recoil; use driven move for dashes, enemy launches, and knockback.
+> **Choose between `Apply impulse` and `Set driven move`:** `Apply impulse` is additive - the character retains input control and natural deceleration tapers the extra velocity. `Set driven move` replaces velocity and locks input for the duration. Use impulse for light hits and recoil; use driven move for dashes, enemy launches, and knockback.
 
 ### Jumping
 
@@ -707,7 +707,7 @@ Event: Every tick
 
 ---
 
-### Use Case 1 — Basic Platformer (Simplest Setup)
+### Use Case 1 - Basic Platformer (Simplest Setup)
 
 **Scenario:** A player-controlled character that runs and jumps on Physics platforms. Default keyboard controls.
 
@@ -725,7 +725,7 @@ Trigger: PlatformerPhysics -> On facing changed
 
 ---
 
-### Use Case 2 — Touch Controls (Mobile)
+### Use Case 2 - Touch Controls (Mobile)
 
 **Scenario:** On-screen buttons control a mobile platformer character using `SimulateControl`.
 
@@ -746,7 +746,7 @@ Event: Touch -> On touch end on "BtnJump"
 
 ---
 
-### Use Case 3 — AI-Controlled Enemy
+### Use Case 3 - AI-Controlled Enemy
 
 **Scenario:** An enemy patrols left and right, turning at edges. Uses the same behavior as the player.
 
@@ -762,7 +762,7 @@ Event: Every tick
 // Turn at edges
 Trigger: Enemy.PlatformerPhysics -> On fallen off
   Action: Enemy -> Set PatrolDir to Enemy.PatrolDir * -1
-  // Enemy walked off a ledge — turn around
+  // Enemy walked off a ledge - turn around
 
 // Jump over obstacles
 Event: Enemy.PlatformerPhysics -> Is on wall (Either)
@@ -771,7 +771,7 @@ Event: Enemy.PlatformerPhysics -> Is on wall (Either)
 
 ---
 
-### Use Case 4 — Unlockable Double Jump
+### Use Case 4 - Unlockable Double Jump
 
 **Scenario:** Player starts with single jump. Picking up an upgrade grants double jump.
 
@@ -789,7 +789,7 @@ Trigger: PlatformerPhysics -> On double jumped
 
 ---
 
-### Use Case 5 — Explosion Knockback
+### Use Case 5 - Explosion Knockback
 
 **Scenario:** An explosion launches the player upward with a physics impulse. Platformer Physics resumes control on landing.
 
@@ -813,7 +813,7 @@ Trigger: PlatformerPhysics -> On landed
 
 ---
 
-### Use Case 6 — Wall Jump Sequence
+### Use Case 6 - Wall Jump Sequence
 
 **Scenario:** A vertical shaft with walls on both sides. The player wall-jumps between them to ascend.
 
@@ -835,7 +835,7 @@ Trigger: PlatformerPhysics -> On wall jumped
 
 ---
 
-### Use Case 7 — Cutscene / Ignore Input
+### Use Case 7 - Cutscene / Ignore Input
 
 **Scenario:** During a dialogue cutscene, the player character stands still and cannot move. After the cutscene, control is returned.
 
@@ -852,7 +852,7 @@ Event: Dialogue -> On complete
 
 ---
 
-### Use Case 8 — Speed Boost Zone
+### Use Case 8 - Speed Boost Zone
 
 **Scenario:** Running through a speed zone temporarily doubles the character's max speed and acceleration.
 
@@ -869,7 +869,7 @@ Event: Player -> Is NOT overlapping SpeedZone
 
 ---
 
-### Use Case 9 — Water Zone (Slow Movement)
+### Use Case 9 - Water Zone (Slow Movement)
 
 **Scenario:** Entering water reduces speed, gravity, and fall speed for a floaty underwater feel. The player can still run and jump, but everything is slower and more buoyant. Exiting the water instantly restores normal physics.
 
@@ -919,7 +919,7 @@ Trigger: PlatformerPhysics -> On landed
 
 ---
 
-### Use Case 10 — Freeze Ray Hit
+### Use Case 10 - Freeze Ray Hit
 
 **Scenario:** When hit by a freeze ray, the player stops instantly and cannot move for 2 seconds.
 
@@ -938,7 +938,7 @@ Event: Player -> On collision with FreezeRay
 
 ---
 
-### Use Case 11 — Landing Impact Animation
+### Use Case 11 - Landing Impact Animation
 
 **Scenario:** Play a different landing animation based on how long the character was airborne.
 
@@ -954,7 +954,7 @@ Trigger: PlatformerPhysics -> On landed
 
 ---
 
-### Use Case 12 — Pushing Physics Crates
+### Use Case 12 - Pushing Physics Crates
 
 **Scenario:** The player character pushes Physics crates by running into them. No extra events needed — Physics handles it automatically.
 
@@ -972,7 +972,7 @@ Event: Every tick
 
 ---
 
-### Use Case 13 — Disable Behavior on Death
+### Use Case 13 - Disable Behavior on Death
 
 **Scenario:** When the player dies, disable the behavior so the ragdoll Physics takes over.
 
@@ -988,7 +988,7 @@ Event: Player -> On collision with Spikes
 
 ---
 
-### Use Case 14 — Debug HUD
+### Use Case 14 - Debug HUD
 
 **Scenario:** Display all behavior state in a debug text object during development.
 
@@ -1009,7 +1009,7 @@ Event: Every tick
 
 ---
 
-### Use Case 15 — Axis Freeze for Moving Platforms
+### Use Case 15 - Axis Freeze for Moving Platforms
 
 **Scenario:** The player lands on a vertically moving platform. Freeze the Y axis so the platform carries them without the behavior fighting the velocity.
 
@@ -1025,7 +1025,7 @@ Event: Player -> Is NOT overlapping VerticalPlatform
 
 ---
 
-### Use Case 16 — Rail Grind (Horizontal Lock)
+### Use Case 16 - Rail Grind (Horizontal Lock)
 
 **Scenario:** The player grinds along a rail, unable to change horizontal speed. Only jumping is allowed.
 
@@ -1043,7 +1043,7 @@ Event: Player -> On leaving Rail
 
 ---
 
-### Use Case 17 — Stasis Trap (Full Freeze)
+### Use Case 17 - Stasis Trap (Full Freeze)
 
 **Scenario:** A trap freezes the player completely for a duration. Unlike `Set ignore input`, this also prevents gravity and external forces from moving them.
 
@@ -1060,7 +1060,7 @@ Event: Player -> On collision with StasisTrap
 
 ---
 
-### Use Case 18 — Tuning Variable Jump Height
+### Use Case 18 - Tuning Variable Jump Height
 
 **Scenario:** Different characters or power-ups change how responsive the jump feels on release.
 
@@ -1079,7 +1079,7 @@ Event: On start of layout
 
 ---
 
-### Use Case 19 — Diagonal Launch Pad
+### Use Case 19 - Diagonal Launch Pad
 
 **Scenario:** A launch pad sends the player diagonally using `Set vector` to set both axes at once.
 
@@ -1093,7 +1093,7 @@ Event: Player -> On collision with DiagonalPad
 
 ---
 
-### Use Case 20 — Ice Physics (Low Deceleration)
+### Use Case 20 - Ice Physics (Low Deceleration)
 
 **Scenario:** Walking on ice reduces deceleration so the player slides when releasing input.
 
@@ -1114,11 +1114,11 @@ Platformer Physics integrates with the **C3 built-in debugger**  and separately 
 
 ### Debugger panel properties
 
-The behavior appears as a collapsible section in the C3 debugger panel. Most properties are **editable live** — click a value to change it without restarting the layout:
+The behavior appears as a collapsible section in the C3 debugger panel. Most properties are **editable live** - click a value to change it without restarting the layout:
 
 | Property | Editable | Notes |
 |---|---|---|
-| `Enabled` | ✓ toggle | Calls `setEnabled()` — clears all state on disable |
+| `Enabled` | ✓ toggle | Calls `setEnabled()` - clears all state on disable |
 | `Vector X` | read-only | Current horizontal Physics velocity |
 | `Vector Y` | read-only | Current vertical Physics velocity |
 | `Max speed` | ✓ | px/s |
@@ -1161,7 +1161,7 @@ When **Debug Mode** is enabled in the behavior properties, a structured line is 
 
 ### How to open the console
 
-Press **F12** in the browser to open Developer Tools, then switch to the **Console** tab. Filter by `[Physics Platformer]` to see only behavior output.
+Press **F12** in the browser to open Developer Tools, then switch to the **Console** tab. Filter by `[Physics Platform Movement]` to see only behavior output.
 
 ---
 
@@ -1178,7 +1178,7 @@ Platformer Physics fully supports Construct 3's savegame system. All runtime sta
 - Jump release damping
 - Axis freeze state (frozen X, frozen Y)
 
-No extra events are needed — `_saveToJson` and `_loadFromJson` handle everything automatically.
+No extra events are needed - `_saveToJson` and `_loadFromJson` handle everything automatically.
 
 ---
 
@@ -1277,7 +1277,7 @@ You can pass either a **string** or a **numeric index**. Strings are case-insens
 | `"stop"` | `4` | Stop |
 
 ```js
-// String-based (recommended for scripts — readable)
+// String-based (recommended for scripts - readable)
 beh.simulateControl("right");        // move right
 beh.simulateControl("Jump");         // jump
 beh.simulateControl("Jump Release"); // early release
@@ -1298,7 +1298,7 @@ beh.simulateControl(2);  // jump
 Adds to the current Physics velocity. The behavior's deceleration naturally tapers it off. Use when you want the character to retain some control (e.g. hit while running):
 
 ```js
-// Hit from the right — shove the character left
+// Hit from the right - shove the character left
 beh.applyImpulse(-300, -100);
 ```
 
@@ -1333,7 +1333,7 @@ After `duration` expires, normal control resumes automatically. No cleanup event
 Since every condition ACE has `expose: true`, C3 copies each condition function onto the behavior prototype as a **PascalCase method** callable directly from script:
 
 ```js
-// Contact and movement checks — all return boolean
+// Contact and movement checks - all return boolean
 beh.IsOnFloor()            // true if on floor this tick
 beh.IsOnCeiling()          // true if on ceiling this tick
 beh.IsOnWall(0)            // 0 = Left, 1 = Right, 2 = Either
@@ -1355,8 +1355,8 @@ The following **property getters** (no parentheses) expose numeric state matchin
 
 ```js
 // Velocity
-beh.vectorX          // horizontal velocity (px/s) — positive = right
-beh.vectorY          // vertical velocity (px/s) — positive = down
+beh.vectorX          // horizontal velocity (px/s) - positive = right
+beh.vectorY          // vertical velocity (px/s) - positive = down
 beh.speed            // velocity magnitude (px/s)
 
 // Movement state
@@ -1390,12 +1390,12 @@ runtime.addEventListener("tick", () => {
 function onPlayerHit(playerInst, hitDirection) {
   const beh = playerInst.behaviors.PlatformerPhysics;
 
-  // Light hit — player keeps some control
+  // Light hit - player keeps some control
   if (hitStrength === "light") {
     beh.applyImpulse(hitDirection * -200, -80);
   }
 
-  // Heavy hit — driven move override, brief input lock
+  // Heavy hit - driven move override, brief input lock
   if (hitStrength === "heavy") {
     beh.drivenVelocity(hitDirection * -450, -250, 0.4);
   }
@@ -1432,7 +1432,7 @@ function tickEnemy(enemyInst, targetX) {
   if (dx > 10)       beh.simulateControl("right");
   else if (dx < -10) beh.simulateControl("left");
 
-  // Jump over walls — use exposed condition methods, not private fields
+  // Jump over walls - use exposed condition methods, not private fields
   if (beh.IsOnWall(2)) {  // 2 = Either side
     beh.simulateControl("jump");  // auto-releases next tick
   }
@@ -1443,7 +1443,7 @@ function tickEnemy(enemyInst, targetX) {
 
 ### Gotchas
 
-- **`_phys` may be null on the very first tick.** All public methods guard against this internally. Calls before the first `_tick` completes are safe — they simply do nothing.
+- **`_phys` may be null on the very first tick.** All public methods guard against this internally. Calls before the first `_tick` completes are safe - they simply do nothing.
 - **Direct velocity calls bypass `setIgnoreInput`.** Setting `IgnoreInput = true` blocks `simulateControl` input, but direct calls like `setVelocity`, `setVectorX`, `setVectorY`, `applyImpulse`, and `drivenVelocity` still apply. This is intentional: code-driven overrides should not be blocked by the input suppression flag.
 - **`drivenVelocity` timer survives save/load.** The driven move timer is saved to JSON, so a driven move mid-flight resumes correctly after a load.
-- **`simulateControl` accepts strings or indexes.** From script, pass a readable string like `"jump"` or `"Jump Release"` — spaces, underscores, and hyphens are ignored when matching. Numeric indexes (0–4) still work and are what the ACE combo dropdown passes internally.
+- **`simulateControl` accepts strings or indexes.** From script, pass a readable string like `"jump"` or `"Jump Release"` - spaces, underscores, and hyphens are ignored when matching. Numeric indexes (0–4) still work and are what the ACE combo dropdown passes internally.

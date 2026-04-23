@@ -3,9 +3,9 @@
 <i>Physics-based platformer movement — run, jump, wall-slide, and interact using the built-in Physics behavior.</i> <br>
 ### Version 1.5.0.0
 
-[<img src="https://placehold.co/200x50/4493f8/FFF?text=Download&font=montserrat" width="200"/>](https://github.com/SalmanShhh/C3Addon_platformer_physics/releases/download/salmanshh_platformer_physics-1.5.0.0.c3addon/salmanshh_platformer_physics-1.5.0.0.c3addon)
+[<img src="https://placehold.co/200x50/4493f8/FFF?text=Download&font=montserrat" width="200"/>](https://github.com/SalmanShhh/C3Addon_Physics_PlatformMovement/releases/download/salmanshh_platformer_physics-1.5.0.0.c3addon/salmanshh_platformer_physics-1.5.0.0.c3addon)
 <br>
-<sub> [See all releases](https://github.com/SalmanShhh/C3Addon_platformer_physics/releases) </sub> <br>
+<sub> [See all releases](https://github.com/SalmanShhh/C3Addon_Physics_PlatformMovement/releases) </sub> <br>
 
 #### What's New in 1.5.0.0
 - **Added:** - Add Actions to Toggle whether character is touching a ceiling.
@@ -41,6 +41,9 @@ npm run dev
 ```
 
 ## Examples Files
+| Description | Download |
+| --- | --- |
+| Example Project Physics Platformer | [<img src="https://placehold.co/120x30/4493f8/FFF?text=Download&font=montserrat" width="120"/>](https://github.com/SalmanShhh/C3Addon_Physics_PlatformMovement/raw/refs/heads/main/examples/Example%20Project%20Physics%20Platformer.c3p) |
 
 ---
 ## Properties

@@ -1025,21 +1025,77 @@ Event: Player -> Is NOT overlapping VerticalPlatform
 
 ---
 
-### Use Case 16 - Rail Grind (Horizontal Lock)
+### Use Case 16 - Rail Grinding
 
-**Scenario:** The player grinds along a rail, unable to change horizontal speed. Only jumping is allowed.
+The addon provides two primitives that combine naturally for grinding: **`Set vector X/Y`** (manual velocity control) and **`Set freeze axis`** (prevents input and deceleration from fighting a manually-set velocity). The examples below show two common grind patterns.
 
-#### Event sheet
+> **Setup for both examples:** Add two **instance variables** to your player sprite: `IsGrinding` (boolean, default `false`) and `GrindSpeed` (number, default `0`).
+
+---
+
+#### 16a — Flat Rail (Speed-Locked, Direction-Preserved)
+
+The player snaps to a fixed grind speed on collision. Facing direction determines which way they travel. The horizontal axis is frozen so input and deceleration cannot interfere. Jumping off works automatically — jump is vertical and is unaffected by a horizontal freeze.
+
 ```
+// --- Grind entry ---
 Event: Player -> On collision with Rail
-  Action: PlatformerPhysics -> Set vector X to 300
+  Action: Set IsGrinding to true
+  Action: Set GrindSpeed to 300
+  Action: PlatformerPhysics -> Set vector X to GrindSpeed * PlatformerPhysics.FacingDirection
   Action: PlatformerPhysics -> Set freeze axis Horizontal to true
   Action: Player -> Set animation to "Grind"
 
+// --- Grind exit (walked off end, fell off, or jumped off) ---
 Event: Player -> On leaving Rail
+  Action: Set IsGrinding to false
   Action: PlatformerPhysics -> Set freeze axis Horizontal to false
   Action: Player -> Set animation to "Idle"
+
+// --- Jump off with a horizontal boost ---
+// No extra events needed. Jump input is vertical — freeze axis Horizontal does not block it.
+// The moment the player leaves the Rail overlap, "On leaving Rail" fires and unfreezes.
 ```
+
+> **Tip:** To make the launch direction switchable mid-grind (e.g. the player presses the opposite direction to reverse), add an event that reads the directional input while `IsGrinding = true`, updates facing, and calls `Set vector X` again with the new `FacingDirection`.
+
+---
+
+#### 16b — Speed-Ramping Grind (Sonic-style)
+
+The player's grind speed increases the longer they stay on the rail. The accumulated speed carries into the launch when they jump off or reach the end — rewarding longer grinds with more distance.
+
+```
+// Player instance variables used:
+//   IsGrinding  — Boolean, default false
+//   GrindSpeed  — Number,  default 0
+
+// --- Grind entry: start from current speed or a minimum base ---
+Event: Player -> On collision with Rail
+  Action: Set IsGrinding to true
+  // Inherit current speed if already moving fast, otherwise snap to a base speed of 150.
+  // abs() is used because VectorX can be negative (leftward).
+  Action: Set GrindSpeed to max(abs(PlatformerPhysics.VectorX), 150)
+  Action: PlatformerPhysics -> Set freeze axis Horizontal to true
+  Action: Player -> Set animation to "Grind"
+
+// --- Ramp speed every tick while grinding ---
+Event: Every tick
+  Condition: IsGrinding = true
+    // Accelerate toward 600 px/s at 350 px/s². dt keeps this frame-rate independent.
+    Action: Set GrindSpeed to min(GrindSpeed + 350 * dt, 600)
+    Action: PlatformerPhysics -> Set vector X to GrindSpeed * PlatformerPhysics.FacingDirection
+
+// --- Grind exit: unfreeze and carry speed into the launch ---
+Event: Player -> On leaving Rail
+  Action: Set IsGrinding to false
+  Action: PlatformerPhysics -> Set freeze axis Horizontal to false
+  // GrindSpeed is not reset here — the behavior's normal deceleration tapers it off.
+  // The player launches at whatever speed was reached, rewarding longer grinds.
+  Action: Player -> Set animation to "Idle"
+```
+
+> **Tip:** To prevent a very long rail from launching the player across the entire level, clamp the exit speed in the "On leaving Rail" event: add `Set GrindSpeed to min(GrindSpeed, 450)` before unfreezing.
 
 ---
 

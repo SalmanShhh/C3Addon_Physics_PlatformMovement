@@ -183,7 +183,7 @@ Configure these in the Properties Bar when the object is selected.
 | **Jump Strength** | Float | `600` | Upward impulse magnitude applied when a jump executes (px/s). |
 | **Gravity** | Float | `0` | Additional downward acceleration (px/s²) on top of Physics world gravity. |
 | **Max Fall Speed** | Float | `1000` | Terminal velocity clamp (px/s downward). |
-| **Slope Tolerance** | Float | `0.35` | Reserved floor-bias parameter. Not applied in the current normalized contact classifier. See §8 for details. |
+| **Slope Tolerance** | Float | `0.35` | Biases the wall/floor boundary toward floor classification. At 0 the algorithm has equal horizontal/vertical weight. At 0.35 a contact must be substantially more horizontal than vertical to register as a wall, preventing sloped-surface and corner contacts from spuriously triggering wall-slide or wall-jump. See §8. |
 | **Coyote Time** | Float | `0.1` | Seconds after leaving a ledge during which a jump is still allowed. |
 | **Jump Buffer** | Float | `0.1` | Seconds a jump input is remembered before landing. |
 | **Max Jumps** | Integer | `1` | Total jumps per airborne period. 1 = single, 2 = double jump. |
@@ -474,8 +474,8 @@ The Physics behavior exposes contact point positions but not contact normals. Pl
 normDx = |contact.x − center.x| / halfWidth
 normDy = |contact.y − center.y| / halfHeight
 
-if normDx ≥ normDy  →  wall contact  (left if contact.x < center.x, right otherwise)
-else                →  floor if contact.y > center.y, ceiling otherwise
+if normDx × (1 − SlopeTolerance) ≥ normDy  →  wall contact  (left if contact.x < center.x, right otherwise)
+else                                        →  floor if contact.y > center.y, ceiling otherwise
 ```
 
 Each contact point is assigned to **exactly one** category. This mutual-exclusion guarantee is critical for box and polygon shapes: the previous approach used independent threshold checks that allowed corner contacts to simultaneously set a floor flag *and* a wall flag. That caused wall slide to fail because `IsWallSliding` is guarded by `!IsOnFloor`.
@@ -486,11 +486,34 @@ Without normalisation, a wide, flat character would have contacts near the botto
 
 ### Slope Tolerance
 
-The **Slope Tolerance** property is read from editor properties but is **not applied** in the current classification algorithm. It is reserved for a future floor-bias parameter. Changing it has no effect at runtime.
+**Slope Tolerance** (default `0.35`) biases the wall/floor decision toward floor. The raw comparison (`normDx >= normDy`) gives equal weight to both axes, so any contact within 45° of the vertical is treated as a wall. Multiplying `normDx` by `(1 − SlopeTolerance)` raises the wall threshold: a contact must be proportionally more horizontal than vertical before it registers as a wall.
+
+At 0.35 a contact's horizontal component must exceed approximately 65% of its vertical component to register as a wall. This prevents sloped-surface contacts and box-corner contacts (which Box2D places at the edge of the touching face) from spuriously triggering wall-slide or wall-jump.
+
+Set it to `0` to restore strict 45° classification. Values above `0.5` risk treating genuine wall contacts as floor contacts.
+
+### Contact anti-jitter
+
+Box2D can silently drop valid contacts for 1–2 consecutive simulation steps even when the character is continuously touching a surface. Without mitigation this causes:
+
+- `OnLanded` / `OnFallenOff` firing repeatedly while continuously grounded
+- `JumpsRemaining` resetting on every spurious re-land tick
+- `OnLeftWallContact` and the wall coyote window re-arming mid-slide
+- Coyote time starting a frame early after walking off a ledge
+
+Platformer Physics guards against this with a **2-frame grace window** per contact state. `IsOnFloor`, `IsOnWallLeft`, and `IsOnWallRight` only clear after the contact has been absent for 2 consecutive frames. The grace is forcibly expired on any jump so the character enters the airborne state immediately without delay.
+
+### Floor normal (derived)
+
+Platformer Physics derives an approximate outward floor surface normal by averaging the center→contact offset vectors for all floor contacts each tick and normalizing the result. This is accurate for flat and gently sloped surfaces. For complex polygon shapes, Box2D places contacts at polygon vertices rather than face midpoints, so the derived normal can lean slightly off the true surface direction.
+
+The normal is retained across grace-window frames so callers always receive a meaningful value during brief contact jitter. The default before first ground contact is `(0, −1)` — straight up.
+
+See §13 for the `FloorNormalX`, `FloorNormalY`, and `FloorNormalAngle` expressions.
 
 ### Limitations
 
-- On steep slopes (> ~45 °), contacts may be classified as walls instead of floors — a fundamental limitation of position-based classification without access to contact normals
+- On very steep slopes (> ~60°), contacts may still classify as walls, a fundamental limitation of position-based classification without access to contact normals. Increasing Slope Tolerance helps on gentle slopes; the most reliable fix for steep terrain is adjusting the Physics collision shape.
 - If the Physics collision shape is significantly smaller than the sprite bounding box, misclassification can occur
 - Circle collision shapes produce contacts only at the single outermost contact point, which is always geometrically unambiguous — circles give the cleanest floor/wall separation
 
@@ -686,6 +709,9 @@ Event: Every tick
 | `FacingDirection` | number | -1 = left, 1 = right. |
 | `WallContactSide` | number | -1 = left wall, 1 = right wall, 0 = no wall contact. |
 | `AnimMode` | string | Current animation state: `"Idle"`, `"Moving"`, `"Jumping"`, `"Falling"`, `"Wall sliding"`, or `"Disabled"`. |
+| `FloorNormalX` | number | Outward floor surface normal X component (derived from contact offsets). `0` on flat ground. Retains last valid value while airborne; `0` before first ground contact. |
+| `FloorNormalY` | number | Outward floor surface normal Y component. `-1` on flat ground (C3 Y increases downward). Retains last valid value while airborne. |
+| `FloorNormalAngle` | number | Outward floor surface normal as an angle in degrees (0–360, clockwise from right). `270°` on flat ground. Retains last valid value while airborne. |
 
 ---
 
@@ -1164,6 +1190,83 @@ Event: Player -> Is NOT overlapping IceZone
 
 ---
 
+### Use Case 21 - Floor Normal: Slope-Aligned Effects
+
+**Scenario:** Use the floor surface normal to drive three slope-aware effects: a speed modifier (the character moves faster downhill and slower uphill), a slope-aligned sprite tilt, and a particle emitter that always ejects perpendicular to the surface the character is standing on.
+
+The floor normal is a unit vector pointing away from the surface. On flat ground it is `(0, -1)` (straight up in C3 coordinates where Y increases downward). On a slope rising to the right the X component becomes negative; on a slope rising to the left it is positive. `FloorNormalAngle` gives the same direction as a clockwise-from-right degree value: `270°` on flat ground.
+
+> **Accuracy note:** The normal is derived geometrically from contact point offsets — see §8. It is reliable for flat ground and gentle slopes. For very steep or polygon-heavy terrain the derived angle may deviate slightly from the true surface angle.
+
+#### Setup
+
+Add one **instance variable** to the player sprite: `BaseMaxSpeed` (number, set to your normal max speed, e.g. `200`).
+
+#### Event sheet
+
+```
+// --- Slope speed modifier ---
+// Downhill: dot product of velocity direction and floor normal is negative (they oppose).
+// Project the gravity direction (0, 1) onto the floor normal to get the slope component.
+// Positive result = downhill run, negative = uphill.
+// FloorNormalY is negative (upward), so a slope tilted downhill in the run direction
+// gives a positive dot with (FacingDirection, 0) projected along the slope.
+Event: Every tick
+  Condition: PlatformerPhysics -> Is on floor
+    // Slope factor: how much the surface tilts in the direction of travel.
+    // FloorNormalX is the horizontal component of the outward normal.
+    // Facing right (+1) on a slope where the normal leans left (negative X) = downhill.
+    // Clamp to ±1 to prevent extreme values on near-vertical surfaces.
+    Local number SlopeFactor = clamp(-PlatformerPhysics.FloorNormalX * PlatformerPhysics.FacingDirection, -1, 1)
+
+    // Scale max speed: +30% downhill, -20% uphill
+    Action: PlatformerPhysics -> Set max speed to BaseMaxSpeed * (1 + SlopeFactor * 0.3)
+
+Event: Every tick
+  Condition: PlatformerPhysics -> Is on floor [INVERTED]
+    // Restore base speed when airborne
+    Action: PlatformerPhysics -> Set max speed to BaseMaxSpeed
+
+// --- Sprite tilt to match slope ---
+// FloorNormalAngle is 270° on flat ground (normal points straight up).
+// Convert to a tilt angle relative to flat: subtract 270° to get deviation.
+// Negate because a normal leaning right means the surface tilts left (sprite leans right).
+Event: Every tick
+  Condition: PlatformerPhysics -> Is on floor
+    Local number TiltAngle = -(PlatformerPhysics.FloorNormalAngle - 270)
+    Action: Player -> Set angle to TiltAngle
+
+Event: Every tick
+  Condition: PlatformerPhysics -> Is on floor [INVERTED]
+    // Snap upright when airborne
+    Action: Player -> Set angle to 0
+
+// --- Particle emitter perpendicular to surface ---
+// Point the emitter in the direction of the floor normal (away from the surface).
+// FloorNormalAngle gives the outward direction — use it directly as the emit angle.
+Event: Every tick
+  Condition: PlatformerPhysics -> Is on floor
+    Action: DustParticles -> Set angle to PlatformerPhysics.FloorNormalAngle
+
+// Emit a burst of particles on landing, ejected perpendicular to the surface
+Trigger: PlatformerPhysics -> On landed
+  Action: DustParticles -> Set angle to PlatformerPhysics.FloorNormalAngle
+  Action: DustParticles -> Spawn particles
+```
+
+#### How the slope factor works
+
+| Surface | `FloorNormalX` | Facing | `SlopeFactor` | Effect |
+|---|---|---|---|---|
+| Flat ground | `0` | either | `0` | No speed change |
+| Slope rising right, running right (downhill) | `−0.5` | `+1` | `+0.5` | +15% speed |
+| Slope rising right, running left (uphill) | `−0.5` | `−1` | `−0.5` | −10% speed |
+| Slope rising left, running left (downhill) | `+0.5` | `−1` | `+0.5` | +15% speed |
+
+The `clamp(…, -1, 1)` guard ensures the factor stays within range even if contact jitter briefly produces a non-unit normal.
+
+---
+
 ## 16. C3 Debugger
 
 Platformer Physics integrates with the **C3 built-in debugger**  and separately with the **browser console** when Debug Mode is enabled. Both surfaces show live state.
@@ -1250,7 +1353,7 @@ No extra events are needed - `_saveToJson` and `_loadFromJson` handle everything
 
 - **Don't mix `SetVectorY` with jump inputs on the same tick.** `SetVectorY` runs after the jump impulse and will overwrite it.
 
-- **Steep slopes may misclassify as walls.** The contact classifier uses normalized half-extent comparison — a contact is floor only if it is proportionally further below center (relative to object height) than it is to the side (relative to object width). If a sloped surface still misclassifies, the most effective fix is adjusting the Physics collision shape: a shape that is clearly taller than it is wide produces an unambiguous separation between floor and wall contacts. The **Slope Tolerance** property currently has no effect on classification.
+- **Steep slopes may misclassify as walls.** The contact classifier uses normalized half-extent comparison biased by **Slope Tolerance** (default 0.35). Increasing Slope Tolerance reclassifies contacts closer to 45° as floor rather than wall, which helps on gentle slopes. For very steep terrain the most reliable fix remains adjusting the Physics collision shape: a body clearly taller than it is wide produces an unambiguous floor/wall separation.
 
 - **The Physics collision shape matters.** Use a convex capsule or rounded rectangle for the character. A simple box can catch on platform edges; a circle can slide off slopes. The collision shape directly affects contact point positions, which drive floor/wall/ceiling detection.
 
@@ -1420,6 +1523,12 @@ beh.jumpsRemaining   // jumps left in the current airborne period
 beh.airTime          // seconds since last leaving floor contact
 beh.facingDirection  // -1 = left, 1 = right
 beh.wallContactSide  // -1 = left wall, 1 = right wall, 0 = none
+
+// Floor surface normal (derived from contact offsets — see §8)
+beh.floorNormalX     // outward normal X; 0 on flat ground; retains last valid value while airborne
+beh.floorNormalY     // outward normal Y; -1 on flat ground (C3 Y-down); retains last value while airborne
+                     // combine with Math.atan2(beh.floorNormalY, beh.floorNormalX) for radians
+                     // or use the FloorNormalAngle expression for a 0–360° value
 
 // Ability flags
 beh.isCoyoteTimeEnabled    // true when coyoteTime > 0

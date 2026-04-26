@@ -1,15 +1,17 @@
 <img src="./src/icon.svg" width="100" /><br>
 # Physics Platformer
 <i>Physics-based platformer movement — run, jump, wall-slide, and interact using the built-in Physics behavior.</i> <br>
-### Version 1.5.0.0
+### Version 1.5.1.0
 
-[<img src="https://placehold.co/200x50/4493f8/FFF?text=Download&font=montserrat" width="200"/>](https://github.com/SalmanShhh/C3Addon_Physics_PlatformMovement/releases/download/salmanshh_platformer_physics-1.5.0.0.c3addon/salmanshh_platformer_physics-1.5.0.0.c3addon)
+[<img src="https://placehold.co/200x50/4493f8/FFF?text=Download&font=montserrat" width="200"/>](https://github.com/SalmanShhh/C3Addon_Physics_PlatformMovement/releases/download/salmanshh_platformer_physics-1.5.1.0.c3addon/salmanshh_platformer_physics-1.5.1.0.c3addon)
 <br>
 <sub> [See all releases](https://github.com/SalmanShhh/C3Addon_Physics_PlatformMovement/releases) </sub> <br>
 
-#### What's New in 1.5.0.0
-- **Added:** - Add Actions to Toggle whether character is touching a ceiling.
-- **Changed:** - Knockback, given a more descriptive name to understand its versatility better. "Driven Movement"
+#### What's New in 1.5.1.0
+- **Added:** - Added ACEs with Floor Normal (approximation)
+- **Changed:** - Improve Wall Detection (Slop Tolerance variable actually works)
+- **Changed:** - The 2-frame grace delays real "fallen off edge" detection (to help mitigate issues from Box2D contact jitters)
+- **Fixed:** - fix landing bounce (atches residual bounce regardless of the Physics behaviour settings)
 
 <sub>[View full changelog](#changelog)</sub>
 
@@ -146,6 +148,9 @@ npm run dev
 | AnimMode | Current animation mode string: "Idle", "Moving", "Jumping", "Falling", "Wall sliding", or "Disabled". | string |  | 
 | Deceleration | Current Deceleration setting (px/s²). | number |  | 
 | FacingDirection | Current facing as a signed number: -1 = left, 1 = right. | number |  | 
+| FloorNormalAngle | Approximate outward floor surface normal as an angle in degrees (0–360, clockwise from right). 270° on flat ground (normal points straight up). Retains the last valid value while airborne. | number |  | 
+| FloorNormalX | Approximate outward floor surface normal X component. Derived from contact point offsets — accurate for flat and gently sloped surfaces. Retains the last valid value while airborne. 0 before first ground contact. | number |  | 
+| FloorNormalY | Approximate outward floor surface normal Y component. Negative = upward (C3 Y increases downward). -1 on flat ground. Retains the last valid value while airborne. | number |  | 
 | Gravity | Current additional gravity setting (px/s²). | number |  | 
 | JumpsRemaining | How many jumps the character has left before landing. | number |  | 
 | JumpStrength | Current Jump Strength setting. | number |  | 
@@ -161,6 +166,12 @@ npm run dev
 
 ---
 ## Changelog
+
+**1.5.1.0**
+- **Added:** - Added ACEs with Floor Normal (approximation)
+- **Changed:** - Improve Wall Detection (Slop Tolerance variable actually works)
+- **Changed:** - The 2-frame grace delays real "fallen off edge" detection (to help mitigate issues from Box2D contact jitters)
+- **Fixed:** - fix landing bounce (atches residual bounce regardless of the Physics behaviour settings)
 
 **1.5.0.0**
 - **Added:** - Add Actions to Toggle whether character is touching a ceiling.

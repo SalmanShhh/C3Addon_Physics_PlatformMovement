@@ -717,6 +717,21 @@
             "description": "Current facing as a signed number: -1 = left, 1 = right.",
             "params": {}
           },
+          "FloorNormalAngle": {
+            "translated-name": "FloorNormalAngle",
+            "description": "Approximate outward floor surface normal as an angle in degrees (0–360, clockwise from right). 270° on flat ground (normal points straight up). Retains the last valid value while airborne.",
+            "params": {}
+          },
+          "FloorNormalX": {
+            "translated-name": "FloorNormalX",
+            "description": "Approximate outward floor surface normal X component. Derived from contact point offsets — accurate for flat and gently sloped surfaces. Retains the last valid value while airborne. 0 before first ground contact.",
+            "params": {}
+          },
+          "FloorNormalY": {
+            "translated-name": "FloorNormalY",
+            "description": "Approximate outward floor surface normal Y component. Negative = upward (C3 Y increases downward). -1 on flat ground. Retains the last valid value while airborne.",
+            "params": {}
+          },
           "Gravity": {
             "translated-name": "Gravity",
             "description": "Current additional gravity setting (px/s²).",

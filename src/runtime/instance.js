@@ -1,6 +1,12 @@
 import { id, addonType } from "../../config.caw.js";
 import AddonTypeMap from "../../template/addonTypeMap.js";
 
+// Number of consecutive frames without a contact required before that contact
+// state is cleared. Box2D can silently drop valid contacts for 1–2 simulation
+// steps — without this guard that causes events to fire spuriously and the
+// floor/wall state machine to flicker. See anti-jitter block in _tick().
+const CONTACT_GRACE = 2;
+
 export default function (parentClass) {
   return class extends parentClass {
     constructor() {
@@ -38,6 +44,11 @@ export default function (parentClass) {
       this._floorContactCount = 0;
       this._wallContactSide = 0;
       this._wasOnCeiling = false;
+      this._floorNormalX = 0;    // outward floor surface normal X; updated each tick when grounded
+      this._floorNormalY = -1;   // default = straight up (Y negative = up in C3 coords)
+      this._floorMissFrames = 0;   // consecutive ticks without raw floor contact
+      this._wallLMissFrames = 0;   // consecutive ticks without raw left-wall contact
+      this._wallRMissFrames = 0;   // consecutive ticks without raw right-wall contact
 
       // Runtime state — jumps and timers
       this._jumpsRemaining = this._maxJumps;
@@ -163,6 +174,8 @@ export default function (parentClass) {
       const halfH = this.instance.height / 2;
       const halfW = this.instance.width / 2;
 
+      let floorSumX = 0;
+      let floorSumY = 0;
       const contactCount = this._phys.getContactCount();
       for (let i = 0; i < contactCount; i++) {
         const cx = this._phys.getContactX(i);
@@ -188,22 +201,74 @@ export default function (parentClass) {
         const normDx = halfW > 0 ? Math.abs(dx) / halfW : 0;
         const normDy = halfH > 0 ? Math.abs(dy) / halfH : 0;
 
-        if (normDx >= normDy) {
-          // Horizontal dominates → wall contact
+        // _slopeTolerance biases the wall/floor boundary toward floor classification.
+        // At 0 the comparison is identical to the previous normDx >= normDy.
+        // At 0.35 (default) a contact must be substantially more horizontal than
+        // vertical to register as a wall, preventing sloped-surface and corner
+        // contacts from spuriously triggering wall-slide or wall-jump.
+        if (normDx * (1 - this._slopeTolerance) >= normDy) {
+          // Horizontal dominates beyond slope tolerance → wall contact
           if (dx < 0) {
             this._onWallLeft = true;
           } else {
             this._onWallRight = true;
           }
         } else {
-          // Vertical dominates → floor or ceiling
+          // Vertical dominates (or within slope tolerance) → floor or ceiling
           if (dy > 0) {
             this._onFloor = true;
             this._floorContactCount++;
+            floorSumX += dx;
+            floorSumY += dy;
           } else {
             this._onCeiling = true;
           }
         }
+      }
+
+      // ── FLOOR NORMAL ──────────────────────────────────────────────────────────
+      // Derive an approximate outward floor surface normal from contact offsets.
+      // The vector from the instance center to each floor contact point is the
+      // inward direction (toward the surface). Negate the average and normalize
+      // to get the outward normal. Only updated when raw contacts exist — during
+      // grace-window frames the last valid normal is preserved so callers always
+      // receive a meaningful direction even for 1-2 frames of contact jitter.
+      if (this._floorContactCount > 0) {
+        const nx = -floorSumX;
+        const ny = -floorSumY;
+        const len = Math.sqrt(nx * nx + ny * ny);
+        if (len > 0) {
+          this._floorNormalX = nx / len;
+          this._floorNormalY = ny / len;
+        }
+      }
+
+      // ── CONTACT ANTI-JITTER ──────────────────────────────────────────────────
+      // Box2D can silently drop valid contacts for 1–2 consecutive simulation
+      // steps. Without mitigation this causes: OnLanded / OnFallenOff firing
+      // repeatedly while continuously grounded; _jumpsRemaining resetting on
+      // every glitch tick; OnLeftWallContact triggering during momentary wall
+      // contact loss. CONTACT_GRACE consecutive frames of absence are required
+      // before a contact state clears. Grace is forcibly expired on any jump.
+      if (this._onFloor) {
+        this._floorMissFrames = 0;
+      } else {
+        this._floorMissFrames++;
+        if (this._floorMissFrames <= CONTACT_GRACE) this._onFloor = true;
+      }
+
+      if (this._onWallLeft) {
+        this._wallLMissFrames = 0;
+      } else {
+        this._wallLMissFrames++;
+        if (this._wallLMissFrames <= CONTACT_GRACE) this._onWallLeft = true;
+      }
+
+      if (this._onWallRight) {
+        this._wallRMissFrames = 0;
+      } else {
+        this._wallRMissFrames++;
+        if (this._wallRMissFrames <= CONTACT_GRACE) this._onWallRight = true;
       }
 
       // Update wall contact side
@@ -361,6 +426,12 @@ export default function (parentClass) {
           this._wasOnWall = false; // prevent OnLeftWallContact from firing next tick
           this._jumpBufferTimer = 0;
           this._justJumped = true;
+          // Expire grace on all contacts so the character immediately enters
+          // the airborne state — prevents the grace window from stalling the
+          // floor/wall → air transition for 2 extra frames after the jump.
+          this._floorMissFrames = CONTACT_GRACE + 1;
+          this._wallLMissFrames = CONTACT_GRACE + 1;
+          this._wallRMissFrames = CONTACT_GRACE + 1;
           this._trigger("OnWallJumped");
           this._trigger("OnJumped");
         }
@@ -371,6 +442,7 @@ export default function (parentClass) {
           currentVy = -this._jumpStrength;
           jumped = true;
           this._justJumped = true;
+          this._floorMissFrames = CONTACT_GRACE + 1; // expire grace immediately
           this._coyoteTimer = 0;
           this._jumpBufferTimer = 0;
           this._trigger("OnJumped");
@@ -415,6 +487,15 @@ export default function (parentClass) {
             currentVy = this._wallSlideSpeed;
           }
         }
+      }
+
+      // ── FLOOR VELOCITY CLAMP ──────────────────────────────────────────────
+      // Prevent Physics restitution (bounciness) from bouncing the character off
+      // the floor. When grounded and not actively jumping, any upward velocity
+      // read back from Box2D after a contact impulse is discarded here.
+      // Note: set the Physics behavior "Bounciness" to 0 to eliminate the source.
+      if (this._onFloor && !jumped) {
+        if (currentVy < 0) currentVy = 0;
       }
 
       // ── MAX FALL SPEED CLAMP ────────────────────────────────────────────
@@ -541,6 +622,9 @@ export default function (parentClass) {
         this._jumpInputPressed = false;
         this._jumpInputReleased = false;
         this._stopInputThisTick = false;
+        this._floorMissFrames = 0;
+        this._wallLMissFrames = 0;
+        this._wallRMissFrames = 0;
       }
     }
 
@@ -583,6 +667,11 @@ export default function (parentClass) {
         this._coyoteTimer = 0;
         this._airTime = 0;
         this._wasOnFloor = true;
+        this._floorMissFrames = 0;
+      } else {
+        // Force the anti-jitter grace to expire so the override takes effect
+        // immediately rather than being restored on the next tick.
+        this._floorMissFrames = CONTACT_GRACE + 1;
       }
     }
 
@@ -689,6 +778,21 @@ export default function (parentClass) {
 
     /** Seconds since last leaving floor contact. 0 while grounded. */
     get airTime() { return this._airTime; }
+
+    /**
+     * Approximate outward floor surface normal X component.
+     * Derived from contact point offsets — accurate for flat and gently sloped
+     * surfaces. Retains the last valid value while airborne (no raw contacts).
+     * 0 while disabled or before first ground contact.
+     */
+    get floorNormalX() { return this._floorNormalX; }
+
+    /**
+     * Approximate outward floor surface normal Y component.
+     * Negative = upward (C3 Y increases downward). -1 on flat ground.
+     * Retains the last valid value while airborne.
+     */
+    get floorNormalY() { return this._floorNormalY; }
 
     /** -1 = left, 1 = right. */
     get facingDirection() { return this._facing; }

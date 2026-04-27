@@ -1,11 +1,7 @@
 import { id, addonType } from "../../config.caw.js";
 import AddonTypeMap from "../../template/addonTypeMap.js";
 
-// Number of consecutive frames without a contact required before that contact
-// state is cleared. Box2D can silently drop valid contacts for 1–2 simulation
-// steps — without this guard that causes events to fire spuriously and the
-// floor/wall state machine to flicker. See anti-jitter block in _tick().
-const CONTACT_GRACE = 2;
+
 
 export default function (parentClass) {
   return class extends parentClass {
@@ -46,9 +42,10 @@ export default function (parentClass) {
       this._wasOnCeiling = false;
       this._floorNormalX = 0;    // outward floor surface normal X; updated each tick when grounded
       this._floorNormalY = -1;   // default = straight up (Y negative = up in C3 coords)
-      this._floorMissFrames = 0;   // consecutive ticks without raw floor contact
-      this._wallLMissFrames = 0;   // consecutive ticks without raw left-wall contact
-      this._wallRMissFrames = 0;   // consecutive ticks without raw right-wall contact
+      this._contactGrace = 0.05;   // seconds of contact absence before state clears (~3 frames at 60 fps)
+      this._floorMissTime = 0;     // seconds since last raw floor contact
+      this._wallLMissTime = 0;     // seconds since last raw left-wall contact
+      this._wallRMissTime = 0;     // seconds since last raw right-wall contact
 
       // Runtime state — jumps and timers
       this._jumpsRemaining = this._maxJumps;
@@ -72,6 +69,7 @@ export default function (parentClass) {
       this._wasFalling = false;
       this._isWallSliding = false;
       this._justJumped = false;   // true on the tick a jump fires; prevents coyote timer starting
+
 
       // Lifecycle
       this._enabled = true;
@@ -248,27 +246,27 @@ export default function (parentClass) {
       // steps. Without mitigation this causes: OnLanded / OnFallenOff firing
       // repeatedly while continuously grounded; _jumpsRemaining resetting on
       // every glitch tick; OnLeftWallContact triggering during momentary wall
-      // contact loss. CONTACT_GRACE consecutive frames of absence are required
+      // contact loss. _contactGrace consecutive frames of absence are required
       // before a contact state clears. Grace is forcibly expired on any jump.
       if (this._onFloor) {
         this._floorMissFrames = 0;
       } else {
         this._floorMissFrames++;
-        if (this._floorMissFrames <= CONTACT_GRACE) this._onFloor = true;
+        if (this._floorMissFrames <= this._contactGrace) this._onFloor = true;
       }
 
       if (this._onWallLeft) {
         this._wallLMissFrames = 0;
       } else {
         this._wallLMissFrames++;
-        if (this._wallLMissFrames <= CONTACT_GRACE) this._onWallLeft = true;
+        if (this._wallLMissFrames <= this._contactGrace) this._onWallLeft = true;
       }
 
       if (this._onWallRight) {
         this._wallRMissFrames = 0;
       } else {
         this._wallRMissFrames++;
-        if (this._wallRMissFrames <= CONTACT_GRACE) this._onWallRight = true;
+        if (this._wallRMissFrames <= this._contactGrace) this._onWallRight = true;
       }
 
       // Update wall contact side
@@ -288,7 +286,7 @@ export default function (parentClass) {
         this._wallCoyoteTimer = 0;
         this._wasOnWall = true;
       } else {
-        this._wallCoyoteTimer = Math.max(0, this._wallCoyoteTimer - dt);
+        this._wallCoyoteTimer = Math.max(0, this._wallCoyoteTimer - this.instance.dt);
         if (this._wasOnWall && !this._onFloor) {
           // Just left wall without landing — start wall coyote window
           this._wallCoyoteTimer = this._wallCoyoteTime;
@@ -313,7 +311,7 @@ export default function (parentClass) {
         }
         this._wasOnFloor = true;
       } else {
-        this._coyoteTimer = Math.max(0, this._coyoteTimer - dt);
+        this._coyoteTimer = Math.max(0, this._coyoteTimer - this.instance.dt);
         if (this._wasOnFloor && !this._justJumped) {
           // Fallen off a ledge (not a deliberate jump)
           this._coyoteTimer = this._coyoteTime;
@@ -325,14 +323,14 @@ export default function (parentClass) {
 
       // ── AIRTIME ──────────────────────────────────────────────────────────
       if (!this._onFloor) {
-        this._airTime += dt;
+        this._airTime += this.instance.dt;
       }
 
       // ── TIMERS ──────────────────────────────────────────────────────────
       if (this._jumpInputPressed) {
         this._jumpBufferTimer = this._jumpBuffer;
       } else {
-        this._jumpBufferTimer = Math.max(0, this._jumpBufferTimer - dt);
+        this._jumpBufferTimer = Math.max(0, this._jumpBufferTimer - this.instance.dt);
       }
 
       // ── FALLING STATE TRANSITION ────────────────────────────────────────
@@ -354,7 +352,7 @@ export default function (parentClass) {
       // ── DRIVEN VELOCITY TIMER ────────────────────────────────────────────
       const inDriven = this._drivenTimer > 0;
       if (inDriven) {
-        this._drivenTimer = Math.max(0, this._drivenTimer - dt);
+        this._drivenTimer = Math.max(0, this._drivenTimer - this.instance.dt);
         this._inputX = 0;
         this._jumpInputPressed = false;
         this._jumpInputReleased = false;
@@ -429,9 +427,9 @@ export default function (parentClass) {
           // Expire grace on all contacts so the character immediately enters
           // the airborne state — prevents the grace window from stalling the
           // floor/wall → air transition for 2 extra frames after the jump.
-          this._floorMissFrames = CONTACT_GRACE + 1;
-          this._wallLMissFrames = CONTACT_GRACE + 1;
-          this._wallRMissFrames = CONTACT_GRACE + 1;
+          this._floorMissTime = this._contactGrace + 1;
+          this._wallLMissTime = this._contactGrace + 1;
+          this._wallRMissTime = this._contactGrace + 1;
           this._trigger("OnWallJumped");
           this._trigger("OnJumped");
         }
@@ -442,7 +440,7 @@ export default function (parentClass) {
           currentVy = -this._jumpStrength;
           jumped = true;
           this._justJumped = true;
-          this._floorMissFrames = CONTACT_GRACE + 1; // expire grace immediately
+          this._floorMissTime = this._contactGrace + 1; // expire grace immediately
           this._coyoteTimer = 0;
           this._jumpBufferTimer = 0;
           this._trigger("OnJumped");
@@ -494,7 +492,15 @@ export default function (parentClass) {
       // the floor. When grounded and not actively jumping, any upward velocity
       // read back from Box2D after a contact impulse is discarded here.
       // Note: set the Physics behavior "Bounciness" to 0 to eliminate the source.
-      if (this._onFloor && !jumped) {
+      //
+      // _justJumped guard: at low timescale (or low frame rate) Physics barely
+      // moves the body after a jump fires. Box2D can still report a floor
+      // contact on the very next frame while the character is launching upward.
+      // Without this guard the clamp would zero the jump velocity immediately,
+      // making the character unable to leave the ground. _justJumped stays true
+      // until the character enters the airborne state, suppressing the clamp
+      // for as many frames as the post-jump contact persists.
+      if (this._onFloor && !jumped && !this._justJumped) {
         if (currentVy < 0) currentVy = 0;
       }
 
@@ -564,6 +570,9 @@ export default function (parentClass) {
     /** Enable or disable console debug output each tick. @param {boolean} enabled */
     setDebugMode(enabled) { this._debugMode = !!enabled; }
 
+    /** Set how long (seconds) contact must be absent before that state clears. @param {number} seconds */
+    setContactGrace(seconds) { this._contactGrace = Math.max(0, seconds); }
+
     // ── Jumping ───────────────────────────────────────────────────────────
 
     /** Restore all jumps as if the character just landed on the floor. */
@@ -622,9 +631,9 @@ export default function (parentClass) {
         this._jumpInputPressed = false;
         this._jumpInputReleased = false;
         this._stopInputThisTick = false;
-        this._floorMissFrames = 0;
-        this._wallLMissFrames = 0;
-        this._wallRMissFrames = 0;
+        this._floorMissTime = 0;
+        this._wallLMissTime = 0;
+        this._wallRMissTime = 0;
       }
     }
 
@@ -667,11 +676,11 @@ export default function (parentClass) {
         this._coyoteTimer = 0;
         this._airTime = 0;
         this._wasOnFloor = true;
-        this._floorMissFrames = 0;
+        this._floorMissTime = 0;
       } else {
         // Force the anti-jitter grace to expire so the override takes effect
         // immediately rather than being restored on the next tick.
-        this._floorMissFrames = CONTACT_GRACE + 1;
+        this._floorMissTime = this._contactGrace + 1;
       }
     }
 

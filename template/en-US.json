@@ -99,6 +99,17 @@
               }
             }
           },
+          "SetContactGrace": {
+            "list-name": "Set contact grace duration",
+            "display-text": "Set contact grace to {0} second(s)",
+            "description": "Set how long (in seconds) a floor, wall, or ceiling contact must be absent before that state clears. Higher values reduce contact jitter at the cost of slightly delayed state transitions. Default: 0.05 s (~3 frames at 60 fps).",
+            "params": {
+              "duration": {
+                "name": "Duration",
+                "desc": "Grace duration in seconds. Contact must be absent for this long before the state clears (min 0)."
+              }
+            }
+          },
           "SetCoyoteTime": {
             "list-name": "Set coyote time",
             "display-text": "Set coyote time to {0}",
@@ -705,6 +716,11 @@
           "AnimMode": {
             "translated-name": "AnimMode",
             "description": "Current animation mode string: \"Idle\", \"Moving\", \"Jumping\", \"Falling\", \"Wall sliding\", or \"Disabled\".",
+            "params": {}
+          },
+          "ContactGrace": {
+            "translated-name": "ContactGrace",
+            "description": "The current contact grace duration in seconds — how long a floor, wall, or ceiling contact must be absent before that state clears.",
             "params": {}
           },
           "Deceleration": {

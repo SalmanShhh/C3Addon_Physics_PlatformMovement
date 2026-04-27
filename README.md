@@ -1,17 +1,15 @@
 <img src="./src/icon.svg" width="100" /><br>
 # Physics Platformer
 <i>Physics-based platformer movement — run, jump, wall-slide, and interact using the built-in Physics behavior.</i> <br>
-### Version 1.5.1.0
+### Version 1.6.0.0
 
-[<img src="https://placehold.co/200x50/4493f8/FFF?text=Download&font=montserrat" width="200"/>](https://github.com/SalmanShhh/C3Addon_Physics_PlatformMovement/releases/download/salmanshh_platformer_physics-1.5.1.0.c3addon/salmanshh_platformer_physics-1.5.1.0.c3addon)
+[<img src="https://placehold.co/200x50/4493f8/FFF?text=Download&font=montserrat" width="200"/>](https://github.com/SalmanShhh/C3Addon_Physics_PlatformMovement/releases/download/salmanshh_platformer_physics-1.6.0.0.c3addon/salmanshh_platformer_physics-1.6.0.0.c3addon)
 <br>
 <sub> [See all releases](https://github.com/SalmanShhh/C3Addon_Physics_PlatformMovement/releases) </sub> <br>
 
-#### What's New in 1.5.1.0
-- **Added:** - Added ACEs with Floor Normal (approximation)
-- **Changed:** - Improve Wall Detection (Slop Tolerance variable actually works)
-- **Changed:** - The 2-frame grace delays real "fallen off edge" detection (to help mitigate issues from Box2D contact jitters)
-- **Fixed:** - fix landing bounce (atches residual bounce regardless of the Physics behaviour settings)
+#### What's New in 1.6.0.0
+- **Added:** - "ContactGrace" expression, returns the current grace duration
+- **Added:** - "Set contact grace" action, change the grace window at runtime
 
 <sub>[View full changelog](#changelog)</sub>
 
@@ -76,6 +74,7 @@ npm run dev
 | Action | Description | Params
 | --- | --- | --- |
 | Set acceleration | Change how quickly the character speeds up. | Acceleration             *(number)* <br> |
+| Set contact grace duration | Set how long (in seconds) a floor, wall, or ceiling contact must be absent before that state clears. Higher values reduce contact jitter at the cost of slightly delayed state transitions. Default: 0.05 s (~3 frames at 60 fps). | Duration             *(number)* <br> |
 | Set coyote time | How long after walking off a ledge the player can still jump. Makes platforming more forgiving. Set to 0 to disable. | Time             *(number)* <br> |
 | Set debug mode | Turn debug console output on or off. Prints movement state to the browser console (F12) — handy when tuning values. | Enabled             *(boolean)* <br> |
 | Set deceleration | How quickly the character stops when releasing input. Low = icy sliding, high = instant stop. | Deceleration             *(number)* <br> |
@@ -146,6 +145,7 @@ npm run dev
 | Acceleration | Current Acceleration setting (px/s²). | number |  | 
 | AirTime | Seconds the character has been in the air. 0 on the ground. | number |  | 
 | AnimMode | Current animation mode string: "Idle", "Moving", "Jumping", "Falling", "Wall sliding", or "Disabled". | string |  | 
+| ContactGrace | The current contact grace duration in seconds — how long a floor, wall, or ceiling contact must be absent before that state clears. | number |  | 
 | Deceleration | Current Deceleration setting (px/s²). | number |  | 
 | FacingDirection | Current facing as a signed number: -1 = left, 1 = right. | number |  | 
 | FloorNormalAngle | Approximate outward floor surface normal as an angle in degrees (0–360, clockwise from right). 270° on flat ground (normal points straight up). Retains the last valid value while airborne. | number |  | 
@@ -166,6 +166,10 @@ npm run dev
 
 ---
 ## Changelog
+
+**1.6.0.0**
+- **Added:** - "ContactGrace" expression, returns the current grace duration
+- **Added:** - "Set contact grace" action, change the grace window at runtime
 
 **1.5.1.0**
 - **Added:** - Added ACEs with Floor Normal (approximation)

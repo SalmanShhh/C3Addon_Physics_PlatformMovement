@@ -447,6 +447,8 @@ Event: On start of layout
 
 The `OnFallenOff` trigger fires when the player leaves a ledge without jumping. At that moment, the coyote timer starts counting down.
 
+> **Timescale note:** All timers use instance delta time and stretch with the instance's timescale. A 0.1 s coyote window or jump buffer lasts proportionally longer in slow-motion, which naturally feels more forgiving during cinematic effects.
+
 ### Jump Buffer
 
 **Jump Buffer** (default 0.1 seconds) remembers a jump press for a short window before the character lands. If the player presses jump while still in the air but about to land, the jump fires automatically on the next landing tick:
@@ -501,7 +503,9 @@ Box2D can silently drop valid contacts for 1–2 consecutive simulation steps ev
 - `OnLeftWallContact` and the wall coyote window re-arming mid-slide
 - Coyote time starting a frame early after walking off a ledge
 
-Platformer Physics guards against this with a **2-frame grace window** per contact state. `IsOnFloor`, `IsOnWallLeft`, and `IsOnWallRight` only clear after the contact has been absent for 2 consecutive frames. The grace is forcibly expired on any jump so the character enters the airborne state immediately without delay.
+Platformer Physics guards against this with a **configurable grace window** (default 2 frames) per contact state. `IsOnFloor`, `IsOnWallLeft`, and `IsOnWallRight` only clear after the contact has been absent for that many consecutive frames. The grace is forcibly expired on any jump so the character enters the airborne state immediately without delay.
+
+The grace frame count can be read with the `ContactGrace` expression and changed at runtime with the **Set contact grace** action. Lower values make contact state more reactive; higher values smooth out jitter on surfaces that produce intermittent contacts.
 
 ### Floor normal (derived)
 
@@ -661,6 +665,7 @@ Event: Every tick
 | **Set coyote time** `value` | Override floor coyote time (seconds) at runtime. Pass 0 to disable. |
 | **Set jump buffer** `value` | Override jump buffer duration (seconds) at runtime. Pass 0 to disable. |
 | **Set debug mode** `enabled` | Enable or disable console debug output at runtime. |
+| **Set contact grace** `frames` | Set the number of consecutive frames without a contact before that state clears (default 2). Lower = more reactive; higher = smoother on jittery surfaces. |
 
 ---
 
@@ -705,13 +710,14 @@ Event: Every tick
 | `MovingAngle` | number | Direction of velocity in degrees (0 = right, 90 = down). 0 when stationary. |
 | `WallCoyoteTimer` | number | Seconds remaining in the wall coyote window. 0 when not in a wall coyote window. |
 | `JumpsRemaining` | number | Jumps left in the current airborne period. Resets on landing. |
-| `AirTime` | number | Seconds since last leaving floor contact. 0 while grounded. |
+| `AirTime` | number | Seconds since last leaving floor contact, measured in instance time. 0 while grounded. Scales with the instance's timescale — slow-motion extends the reported value proportionally. |
 | `FacingDirection` | number | -1 = left, 1 = right. |
 | `WallContactSide` | number | -1 = left wall, 1 = right wall, 0 = no wall contact. |
 | `AnimMode` | string | Current animation state: `"Idle"`, `"Moving"`, `"Jumping"`, `"Falling"`, `"Wall sliding"`, or `"Disabled"`. |
 | `FloorNormalX` | number | Outward floor surface normal X component (derived from contact offsets). `0` on flat ground. Retains last valid value while airborne; `0` before first ground contact. |
 | `FloorNormalY` | number | Outward floor surface normal Y component. `-1` on flat ground (C3 Y increases downward). Retains last valid value while airborne. |
 | `FloorNormalAngle` | number | Outward floor surface normal as an angle in degrees (0–360, clockwise from right). `270°` on flat ground. Retains last valid value while airborne. |
+| `ContactGrace` | number | The current contact grace frame count — how many consecutive frames without a contact are required before that state clears. |
 
 ---
 
@@ -1353,6 +1359,10 @@ No extra events are needed - `_saveToJson` and `_loadFromJson` handle everything
 
 - **Don't mix `SetVectorY` with jump inputs on the same tick.** `SetVectorY` runs after the jump impulse and will overwrite it.
 
+- **All timers use instance delta time.** Every timer — floor coyote, wall coyote, jump buffer, air time, and driven move — advances using `instance.dt`, the instance-level delta time. This means they all respect both the global timescale *and* any per-instance timescale set on that specific object. In slow-motion they all stretch proportionally, which usually feels correct. Contact grace is frame-count based and is therefore naturally timescale-independent.
+
+- **Adjust contact grace for unusual surfaces.** The default grace of 2 frames suits most character shapes. If you see `OnLanded` / `OnFallenOff` jittering on a specific surface, increase grace to 3–4. If you need contact state to clear as fast as possible (e.g. a character that must detect leaving a surface within one frame), set it to 0. Use the `Set contact grace` action at runtime or read the current value with `ContactGrace`.
+
 - **Steep slopes may misclassify as walls.** The contact classifier uses normalized half-extent comparison biased by **Slope Tolerance** (default 0.35). Increasing Slope Tolerance reclassifies contacts closer to 45° as floor rather than wall, which helps on gentle slopes. For very steep terrain the most reliable fix remains adjusting the Physics collision shape: a body clearly taller than it is wide produces an unambiguous floor/wall separation.
 
 - **The Physics collision shape matters.** Use a convex capsule or rounded rectangle for the character. A simple box can catch on platform edges; a circle can slide off slopes. The collision shape directly affects contact point positions, which drive floor/wall/ceiling detection.
@@ -1390,6 +1400,7 @@ beh.setMaxFallSpeed(1200);     // terminal falling speed in px/s
 beh.setCoyoteTime(0.15);       // floor coyote time in seconds (0 = disabled)
 beh.setJumpBuffer(0.12);       // jump buffer in seconds (0 = disabled)
 beh.setDebugMode(true);        // enable/disable console debug output
+beh.setContactGrace(3);        // consecutive frames before a contact state clears (default 2)
 ```
 
 ---

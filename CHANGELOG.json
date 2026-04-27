@@ -53,5 +53,10 @@
     "added": "- Added ACEs with Floor Normal (approximation)",
     "changed": "- Improve Wall Detection (Slop Tolerance variable actually works)\n- The 2-frame grace delays real \"fallen off edge\" detection (to help mitigate issues from Box2D contact jitters)\n",
     "fixed": "- fix landing bounce (atches residual bounce regardless of the Physics behaviour settings)"
+  },
+  "1.6.0.0": {
+    "added": "- \"ContactGrace\" expression, returns the current grace duration\n- \"Set contact grace\" action, change the grace window at runtime",
+    "changed": "",
+    "fixed": ""
   }
 }

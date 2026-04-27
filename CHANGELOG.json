@@ -58,5 +58,10 @@
     "added": "- \"ContactGrace\" expression, returns the current grace duration\n- \"Set contact grace\" action, change the grace window at runtime",
     "changed": "",
     "fixed": ""
+  },
+  "1.6.1.0": {
+    "added": "- Contact Grace is viewable and editable in the Debugger",
+    "changed": "",
+    "fixed": ""
   }
 }

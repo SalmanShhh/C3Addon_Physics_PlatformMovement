@@ -962,6 +962,7 @@ export default function (parentClass) {
             { name: "$Jump release damping", value: this._jumpReleaseDamping, onedit: v => { this._jumpReleaseDamping = Math.max(0, Math.min(1, +v)); } },
             { name: "$Jumps remaining", value: this._jumpsRemaining },
             { name: "$Animation mode",  value: animMode },
+            { name: "$Contact grace (s)", value: this._contactGrace, onedit: v => { this.setContactGrace(+v); } },
           ],
         },
       ];

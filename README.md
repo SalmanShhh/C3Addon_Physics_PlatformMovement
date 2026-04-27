@@ -1,15 +1,14 @@
 <img src="./src/icon.svg" width="100" /><br>
 # Physics Platformer
 <i>Physics-based platformer movement — run, jump, wall-slide, and interact using the built-in Physics behavior.</i> <br>
-### Version 1.6.0.0
+### Version 1.6.1.0
 
-[<img src="https://placehold.co/200x50/4493f8/FFF?text=Download&font=montserrat" width="200"/>](https://github.com/SalmanShhh/C3Addon_Physics_PlatformMovement/releases/download/salmanshh_platformer_physics-1.6.0.0.c3addon/salmanshh_platformer_physics-1.6.0.0.c3addon)
+[<img src="https://placehold.co/200x50/4493f8/FFF?text=Download&font=montserrat" width="200"/>](https://github.com/SalmanShhh/C3Addon_Physics_PlatformMovement/releases/download/salmanshh_platformer_physics-1.6.1.0.c3addon/salmanshh_platformer_physics-1.6.1.0.c3addon)
 <br>
 <sub> [See all releases](https://github.com/SalmanShhh/C3Addon_Physics_PlatformMovement/releases) </sub> <br>
 
-#### What's New in 1.6.0.0
-- **Added:** - "ContactGrace" expression, returns the current grace duration
-- **Added:** - "Set contact grace" action, change the grace window at runtime
+#### What's New in 1.6.1.0
+- **Added:** - Contact Grace is viewable and editable in the Debugger
 
 <sub>[View full changelog](#changelog)</sub>
 
@@ -166,6 +165,9 @@ npm run dev
 
 ---
 ## Changelog
+
+**1.6.1.0**
+- **Added:** - Contact Grace is viewable and editable in the Debugger
 
 **1.6.0.0**
 - **Added:** - "ContactGrace" expression, returns the current grace duration

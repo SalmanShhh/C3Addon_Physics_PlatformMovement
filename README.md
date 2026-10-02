@@ -1,14 +1,26 @@
 <img src="./src/icon.svg" width="100" /><br>
 # Physics Platformer
 <i>Physics-based platformer movement — run, jump, wall-slide, and interact using the built-in Physics behavior.</i> <br>
-### Version 1.6.1.0
+### Version 1.7.0.0
 
-[<img src="https://placehold.co/200x50/4493f8/FFF?text=Download&font=montserrat" width="200"/>](https://github.com/SalmanShhh/C3Addon_Physics_PlatformMovement/releases/download/salmanshh_platformer_physics-1.6.1.0.c3addon/salmanshh_platformer_physics-1.6.1.0.c3addon)
+[<img src="https://placehold.co/200x50/4493f8/FFF?text=Download&font=montserrat" width="200"/>](https://github.com/SalmanShhh/C3Addon_Physics_PlatformMovement/releases/download/salmanshh_platformer_physics-1.7.0.0.c3addon/salmanshh_platformer_physics-1.7.0.0.c3addon)
 <br>
 <sub> [See all releases](https://github.com/SalmanShhh/C3Addon_Physics_PlatformMovement/releases) </sub> <br>
 
-#### What's New in 1.6.1.0
-- **Added:** - Contact Grace is viewable and editable in the Debugger
+#### What's New in 1.7.0.0
+- **Added:** - Wall Jump Input Lock property (default 0.15s) and "Set wall jump input lock" action: briefly ignores input toward the wall after a wall jump
+- **Added:** - "Enabled" property (default On) to start the behavior disabled
+- **Changed:** - A wall jump's horizontal push can exceed Max Speed and eases off at the Deceleration rate (other speed above Max Speed still snaps to it, as before)
+- **Changed:** - Contact classification measures from the bounding box (works with any origin)
+- **Changed:** - Properties reordered: Debug Mode first, Wall Jump Input Lock beside the other wall jump settings, Enabled last. Existing projects keep their values
+- **Changed:** - Migration: with contact grace working again, Is on floor / Is on wall stay true ~0.05s after contact ends, so On fallen off fires ~3 frames later than in 1.6.x. Set contact grace to 0 to restore 1.6.x timing
+- **Fixed:** - Wall slide / wall jump with box collision shapes (wall corners were read as floor + ceiling)
+- **Fixed:** - Jumping while pressed against a wall (false ceiling bonk)
+- **Fixed:** - Wall detection on mirrored/flipped sprites
+- **Fixed:** - Floor/wall detection with non-centered image origins (e.g. bottom-center)
+- **Fixed:** - Contact grace had no effect since 1.6.0
+- **Fixed:** - No phantom landing when spawned, re-enabled or loaded in mid-air
+- **Fixed:** - Contact grace and wall jump lock saved/loaded; older saves keep the object's property values
 
 <sub>[View full changelog](#changelog)</sub>
 
@@ -48,6 +60,7 @@ npm run dev
 ## Properties
 | Property Name | Description | Type |
 | --- | --- | --- |
+| Debug Mode | Print contact classification and velocity state to the browser console each tick. | check |
 | Max Speed | Maximum horizontal movement speed in px/s. | float |
 | Acceleration | Rate at which horizontal velocity increases toward Max Speed (px/s²). | float |
 | Deceleration | Rate at which horizontal velocity decreases to zero when no input is given (px/s²). | float |
@@ -63,9 +76,10 @@ npm run dev
 | Wall Slide Speed | Maximum downward speed (px/s) while wall sliding. | float |
 | Wall Jump | Allow jumping off a wall. | check |
 | Wall Jump Strength | Horizontal impulse component of a wall jump. | float |
+| Wall Jump Input Lock | Seconds after a wall jump during which input toward that wall is ignored, so the jump carries away from the wall. 0 = no lock. | float |
 | Variable Jump Height | Hold the jump button for a higher jump, release it early for a shorter one. | check |
 | Jump Release Damping | Percentage (0–100) of upward velocity retained when the jump button is released early. 50 = keep half speed; 0 = instant cut; 100 = no variable height effect. | float |
-| Debug Mode | Print contact classification and velocity state to the browser console each tick. | check |
+| Enabled | Whether the behavior is initially active. Disable to start with movement off, then enable it with the Set enabled action. | check |
 
 
 ---
@@ -88,6 +102,7 @@ npm run dev
 | Set variable jump height | Tap for a short hop, hold for a full jump. Disable for a fixed jump height every time. | Enabled             *(boolean)* <br> |
 | Set wall coyote time | How long after leaving a wall the player can still wall jump. Forgives slightly late button presses. Set to 0 to disable. | Time             *(number)* <br> |
 | Set wall jump | Toggle the ability to jump off walls. | Enabled             *(boolean)* <br> |
+| Set wall jump input lock | How long input toward the wall is ignored after a wall jump. 0 = no lock. | Time             *(number)* <br> |
 | Set wall jump strength | How far the character pushes away from the wall on a wall jump. Higher = wider arc — use to tune the feel of vertical shaft climbing. | Strength             *(number)* <br> |
 | Set wall slide | Toggle the ability to slide down walls. | Enabled             *(boolean)* <br> |
 | Set wall slide speed | How fast the character slides down a wall. Lower = slower, more controlled. e.g. set very low for a sticky-wall ability. | Speed             *(number)* <br> |
@@ -165,6 +180,21 @@ npm run dev
 
 ---
 ## Changelog
+
+**1.7.0.0**
+- **Added:** - Wall Jump Input Lock property (default 0.15s) and "Set wall jump input lock" action: briefly ignores input toward the wall after a wall jump
+- **Added:** - "Enabled" property (default On) to start the behavior disabled
+- **Changed:** - A wall jump's horizontal push can exceed Max Speed and eases off at the Deceleration rate (other speed above Max Speed still snaps to it, as before)
+- **Changed:** - Contact classification measures from the bounding box (works with any origin)
+- **Changed:** - Properties reordered: Debug Mode first, Wall Jump Input Lock beside the other wall jump settings, Enabled last. Existing projects keep their values
+- **Changed:** - Migration: with contact grace working again, Is on floor / Is on wall stay true ~0.05s after contact ends, so On fallen off fires ~3 frames later than in 1.6.x. Set contact grace to 0 to restore 1.6.x timing
+- **Fixed:** - Wall slide / wall jump with box collision shapes (wall corners were read as floor + ceiling)
+- **Fixed:** - Jumping while pressed against a wall (false ceiling bonk)
+- **Fixed:** - Wall detection on mirrored/flipped sprites
+- **Fixed:** - Floor/wall detection with non-centered image origins (e.g. bottom-center)
+- **Fixed:** - Contact grace had no effect since 1.6.0
+- **Fixed:** - No phantom landing when spawned, re-enabled or loaded in mid-air
+- **Fixed:** - Contact grace and wall jump lock saved/loaded; older saves keep the object's property values
 
 **1.6.1.0**
 - **Added:** - Contact Grace is viewable and editable in the Debugger

@@ -1,5 +1,8 @@
-import { id, addonType } from "../../config.caw.js";
+import { id, addonType, properties } from "../../config.caw.js";
 import AddonTypeMap from "../../template/addonTypeMap.js";
+
+// Property id → position in _getInitProperties()
+const PROP_INDEX = Object.fromEntries(properties.map((p, i) => [p.id, i]));
 
 
 
@@ -11,26 +14,31 @@ export default function (parentClass) {
       // Physics sibling reference
       this._phys = null;
 
-      // Config — read from editor properties
-      const properties = this._getInitProperties();
-      this._maxSpeed         = properties[0];
-      this._acceleration     = properties[1];
-      this._deceleration     = properties[2];
-      this._jumpStrength     = properties[3];
-      this._gravity          = properties[4];
-      this._maxFallSpeed     = properties[5];
-      this._slopeTolerance   = properties[6];
-      this._coyoteTime       = properties[7];
-      this._wallCoyoteTime   = properties[8];
-      this._jumpBuffer       = properties[9];
-      this._maxJumps         = properties[10];
-      this._wallSlide        = properties[11];
-      this._wallSlideSpeed   = properties[12];
-      this._wallJump         = properties[13];
-      this._wallJumpStrength = properties[14];
-      this._variableJump     = properties[15];
-      this._jumpReleaseDamping = properties[16] / 100;
-      this._debugMode        = properties[17];
+      // Config — read from editor properties. _getInitProperties() is
+      // positional, so look each value up by its config.caw.js id; reordering
+      // properties there can't desync these reads.
+      const values = this._getInitProperties();
+      const prop = (propId) => values[PROP_INDEX[propId]];
+      this._debugMode        = prop("debugMode");
+      this._maxSpeed         = prop("maxSpeed");
+      this._acceleration     = prop("acceleration");
+      this._deceleration     = prop("deceleration");
+      this._jumpStrength     = prop("jumpStrength");
+      this._gravity          = prop("gravity");
+      this._maxFallSpeed     = prop("maxFallSpeed");
+      this._slopeTolerance   = prop("slopeTolerance");
+      this._coyoteTime       = prop("coyoteTime");
+      this._wallCoyoteTime   = prop("wallCoyoteTime");
+      this._jumpBuffer       = prop("jumpBuffer");
+      this._maxJumps         = prop("maxJumps");
+      this._wallSlide        = prop("wallSlide");
+      this._wallSlideSpeed   = prop("wallSlideSpeed");
+      this._wallJump         = prop("wallJump");
+      this._wallJumpStrength = prop("wallJumpStrength");
+      this._wallJumpLock     = prop("wallJumpLock");
+      this._variableJump     = prop("variableJumpHeight");
+      this._jumpReleaseDamping = prop("jumpReleaseDamping") / 100;
+      const initiallyEnabled = prop("enabled");
 
       // Runtime state — contact classification
       this._onFloor = false;
@@ -43,9 +51,15 @@ export default function (parentClass) {
       this._floorNormalX = 0;    // outward floor surface normal X; updated each tick when grounded
       this._floorNormalY = -1;   // default = straight up (Y negative = up in C3 coords)
       this._contactGrace = 0.05;   // seconds of contact absence before state clears (~3 frames at 60 fps)
-      this._floorMissTime = 0;     // seconds since last raw floor contact
-      this._wallLMissTime = 0;     // seconds since last raw left-wall contact
-      this._wallRMissTime = 0;     // seconds since last raw right-wall contact
+      // Miss timers start expired so a character spawned mid-air does not get a
+      // phantom grace-window landing on its first tick.
+      this._floorMissTime = Infinity;  // seconds since last raw floor contact
+      this._wallLMissTime = Infinity;  // seconds since last raw left-wall contact
+      this._wallRMissTime = Infinity;  // seconds since last raw right-wall contact
+
+      // Reused per-tick contact offset buffers (avoids per-frame allocation)
+      this._contactDx = [];
+      this._contactDy = [];
 
       // Runtime state — jumps and timers
       this._jumpsRemaining = this._maxJumps;
@@ -69,10 +83,13 @@ export default function (parentClass) {
       this._wasFalling = false;
       this._isWallSliding = false;
       this._justJumped = false;   // true on the tick a jump fires; prevents coyote timer starting
+      this._wallJumpLockTimer = 0; // seconds left ignoring input toward the wall just jumped from
+      this._wallJumpLockDir = 0;   // direction pushed away from the wall (1 = right, -1 = left)
+      this._wallJumpOverspeed = false; // wall jump kick above Max Speed is still easing off
 
-
-      // Lifecycle
-      this._enabled = true;
+      // Lifecycle — starts from the Enabled property; all other state above is
+      // already the clean initial state, so no setEnabled() reset is needed.
+      this._enabled = !!initiallyEnabled;
 
       // Freeze axis
       this._freezeX = false;
@@ -167,20 +184,39 @@ export default function (parentClass) {
       this._onWallRight = false;
       this._floorContactCount = 0;
 
-      const instCX = this.instance.x;
-      const instCY = this.instance.y;
-      const halfH = this.instance.height / 2;
-      const halfW = this.instance.width / 2;
+      // Measure from the bounding box rather than x/y/width/height: the origin
+      // may not be centered (e.g. bottom-center platformer sprites), and a
+      // mirrored/flipped sprite has a negative width/height, which previously
+      // zeroed normDx/normDy and disabled wall detection while facing left.
+      const bbox = this.instance.getBoundingBox();
+      const instCX = (bbox.left + bbox.right) / 2;
+      const instCY = (bbox.top + bbox.bottom) / 2;
+      const halfW = (bbox.right - bbox.left) / 2;
+      const halfH = (bbox.bottom - bbox.top) / 2;
+
+      const contactCount = this._phys.getContactCount();
+      const cdx = this._contactDx;
+      const cdy = this._contactDy;
+      cdx.length = contactCount;
+      cdy.length = contactCount;
+      for (let i = 0; i < contactCount; i++) {
+        cdx[i] = this._phys.getContactX(i) - instCX;
+        cdy[i] = this._phys.getContactY(i) - instCY;
+      }
+
+      // Face-pair tolerances: two contacts lie on the same vertical face when
+      // their x matches within sameEpsX and their y differs by at least
+      // spanMinY (and vice versa for horizontal faces).
+      const sameEpsX = Math.max(1, halfW * 0.05);
+      const sameEpsY = Math.max(1, halfH * 0.05);
+      const spanMinX = halfW * 0.25;
+      const spanMinY = halfH * 0.25;
 
       let floorSumX = 0;
       let floorSumY = 0;
-      const contactCount = this._phys.getContactCount();
       for (let i = 0; i < contactCount; i++) {
-        const cx = this._phys.getContactX(i);
-        const cy = this._phys.getContactY(i);
-
-        const dy = cy - instCY;
-        const dx = cx - instCX;
+        const dx = cdx[i];
+        const dy = cdy[i];
 
         // Normalize deltas by the half-extents so that the comparison is
         // aspect-ratio-aware and works for any collision shape (box, polygon,
@@ -204,7 +240,33 @@ export default function (parentClass) {
         // At 0.35 (default) a contact must be substantially more horizontal than
         // vertical to register as a wall, preventing sloped-surface and corner
         // contacts from spuriously triggering wall-slide or wall-jump.
-        if (normDx * (1 - this._slopeTolerance) >= normDy) {
+        let isWall = normDx * (1 - this._slopeTolerance) >= normDy;
+
+        // ── Corner disambiguation (box / polygon shapes) ──────────────────
+        // A box touching a flat surface gets its contacts at the corners of
+        // the touching face, where normDx ≈ normDy ≈ 1. Position alone cannot
+        // tell a floor corner from a wall corner, so the rule above sent wall
+        // corners to floor (bottom) and ceiling (top) — breaking wall slide,
+        // wall jump, and jumping while pressed against a wall (ceiling bonk).
+        // Two contacts on the same face reveal its orientation: a shared x
+        // means a vertical face (wall), a shared y a horizontal one (floor or
+        // ceiling). Only near-corner contacts whose siblings point one way
+        // are reclassified; everything else keeps the rule above unchanged.
+        if (normDx >= 0.75 && normDy >= 0.75) {
+          let verticalFace = false;
+          let horizontalFace = false;
+          for (let j = 0; j < contactCount; j++) {
+            if (j === i) continue;
+            const ox = Math.abs(cdx[j] - dx);
+            const oy = Math.abs(cdy[j] - dy);
+            if (ox <= sameEpsX && oy >= spanMinY) verticalFace = true;
+            else if (oy <= sameEpsY && ox >= spanMinX) horizontalFace = true;
+          }
+          if (verticalFace && !horizontalFace) isWall = true;
+          else if (horizontalFace && !verticalFace) isWall = false;
+        }
+
+        if (isWall) {
           // Horizontal dominates beyond slope tolerance → wall contact
           if (dx < 0) {
             this._onWallLeft = true;
@@ -246,27 +308,28 @@ export default function (parentClass) {
       // steps. Without mitigation this causes: OnLanded / OnFallenOff firing
       // repeatedly while continuously grounded; _jumpsRemaining resetting on
       // every glitch tick; OnLeftWallContact triggering during momentary wall
-      // contact loss. _contactGrace consecutive frames of absence are required
-      // before a contact state clears. Grace is forcibly expired on any jump.
+      // contact loss. A contact must be absent for _contactGrace seconds
+      // before its state clears. Grace is forcibly expired on any jump.
+      const graceDt = this.instance.dt;
       if (this._onFloor) {
-        this._floorMissFrames = 0;
+        this._floorMissTime = 0;
       } else {
-        this._floorMissFrames++;
-        if (this._floorMissFrames <= this._contactGrace) this._onFloor = true;
+        this._floorMissTime += graceDt;
+        if (this._floorMissTime <= this._contactGrace) this._onFloor = true;
       }
 
       if (this._onWallLeft) {
-        this._wallLMissFrames = 0;
+        this._wallLMissTime = 0;
       } else {
-        this._wallLMissFrames++;
-        if (this._wallLMissFrames <= this._contactGrace) this._onWallLeft = true;
+        this._wallLMissTime += graceDt;
+        if (this._wallLMissTime <= this._contactGrace) this._onWallLeft = true;
       }
 
       if (this._onWallRight) {
-        this._wallRMissFrames = 0;
+        this._wallRMissTime = 0;
       } else {
-        this._wallRMissFrames++;
-        if (this._wallRMissFrames <= this._contactGrace) this._onWallRight = true;
+        this._wallRMissTime += graceDt;
+        if (this._wallRMissTime <= this._contactGrace) this._onWallRight = true;
       }
 
       // Update wall contact side
@@ -358,8 +421,24 @@ export default function (parentClass) {
         this._jumpInputReleased = false;
       }
 
+      // ── WALL JUMP INPUT LOCK ────────────────────────────────────────────
+      // For a short window after a wall jump, input pushing back toward the
+      // wall is ignored so the jump carries the character away from it rather
+      // than steering straight back on (which looked like climbing the wall).
+      if (this._wallJumpLockTimer > 0) {
+        if (this._onFloor) {
+          this._wallJumpLockTimer = 0;
+        } else {
+          this._wallJumpLockTimer = Math.max(0, this._wallJumpLockTimer - this.instance.dt);
+          if (this._inputX !== 0 && Math.sign(this._inputX) !== this._wallJumpLockDir) {
+            this._inputX = 0;
+          }
+        }
+      }
+
       // ── HORIZONTAL MOVEMENT ─────────────────────────────────────────────
       let vx = this._phys.getVelocityX();
+      const prevSpeedX = Math.abs(vx);
 
       if (!inDriven) {
         if (this._inputX !== 0) {
@@ -383,10 +462,25 @@ export default function (parentClass) {
           }
         }
 
-        // Clamp to max speed
-        vx = Math.max(-this._maxSpeed, Math.min(this._maxSpeed, vx));
+        // Clamp to max speed. Only a wall jump's horizontal kick may exceed the
+        // cap: it eases back down (at Deceleration, or Acceleration when
+        // Deceleration is 0) so the jump carries away from the wall. All other
+        // excess speed snaps to Max Speed on the next tick, as in 1.6.x.
+        let speedCap = this._maxSpeed;
+        if (this._wallJumpOverspeed) {
+          if (this._onFloor || prevSpeedX <= this._maxSpeed) {
+            this._wallJumpOverspeed = false;
+          } else {
+            const easeRate = this._deceleration > 0 ? this._deceleration : this._acceleration;
+            speedCap = Math.max(this._maxSpeed, prevSpeedX - easeRate * dt);
+          }
+        }
+        vx = Math.max(-speedCap, Math.min(speedCap, vx));
       } else {
         vx = this._drivenVx;
+        // A driven move replaces any wall jump kick; when it ends its speed
+        // snaps to Max Speed as in 1.6.x rather than easing.
+        this._wallJumpOverspeed = false;
       }
 
       // ── FACING ──────────────────────────────────────────────────────────
@@ -421,6 +515,9 @@ export default function (parentClass) {
           jumped = true;
           isWallJump = true;
           this._wallCoyoteTimer = 0;
+          this._wallJumpLockTimer = this._wallJumpLock;
+          this._wallJumpLockDir = wallDir;
+          this._wallJumpOverspeed = true;
           this._wasOnWall = false; // prevent OnLeftWallContact from firing next tick
           this._jumpBufferTimer = 0;
           this._justJumped = true;
@@ -604,6 +701,9 @@ export default function (parentClass) {
     /** Set the horizontal impulse component of a wall jump (px/s). @param {number} strength */
     setWallJumpStrength(strength) { this._wallJumpStrength = strength; }
 
+    /** Set how long (seconds) after a wall jump input toward that wall is ignored. 0 = no lock. @param {number} time */
+    setWallJumpLock(time) { this._wallJumpLock = Math.max(0, time); }
+
     /** Enable or disable variable jump height. When enabled, releasing jump early cuts upward velocity. @param {boolean} enabled */
     setVariableJumpHeight(enabled) { this._variableJump = !!enabled; }
 
@@ -631,9 +731,13 @@ export default function (parentClass) {
         this._jumpInputPressed = false;
         this._jumpInputReleased = false;
         this._stopInputThisTick = false;
-        this._floorMissTime = 0;
-        this._wallLMissTime = 0;
-        this._wallRMissTime = 0;
+        // Expired (not zero) so re-enabling mid-air doesn't grant a phantom
+        // grace-window landing.
+        this._floorMissTime = Infinity;
+        this._wallLMissTime = Infinity;
+        this._wallRMissTime = Infinity;
+        this._wallJumpLockTimer = 0;
+        this._wallJumpOverspeed = false;
       }
     }
 
@@ -894,6 +998,11 @@ export default function (parentClass) {
         freezeY: this._freezeY,
         drivenTimer: this._drivenTimer,
         drivenVx: this._drivenVx,
+        contactGrace: this._contactGrace,
+        wallJumpLock: this._wallJumpLock,
+        wallJumpLockTimer: this._wallJumpLockTimer,
+        wallJumpLockDir: this._wallJumpLockDir,
+        wallJumpOverspeed: this._wallJumpOverspeed,
       };
     }
 
@@ -933,6 +1042,18 @@ export default function (parentClass) {
       this._freezeY = o.freezeY ?? false;
       this._drivenTimer = o.drivenTimer ?? o.knockbackTimer ?? 0;
       this._drivenVx = o.drivenVx ?? 0;
+      // Added after 1.6.1.0. Saves without these keep the values already set
+      // from the project's properties instead of hard-coded defaults.
+      this._contactGrace = o.contactGrace ?? this._contactGrace;
+      this._wallJumpLock = o.wallJumpLock ?? this._wallJumpLock;
+      this._wallJumpLockTimer = o.wallJumpLockTimer ?? 0;
+      this._wallJumpLockDir = o.wallJumpLockDir ?? 0;
+      this._wallJumpOverspeed = o.wallJumpOverspeed ?? false;
+      // Grace windows are runtime-only: expire them so pre-load contact
+      // history can't hold the loaded floor/wall state for extra ticks.
+      this._floorMissTime = Infinity;
+      this._wallLMissTime = Infinity;
+      this._wallRMissTime = Infinity;
     }
 
     _getDebuggerProperties() {
@@ -963,6 +1084,7 @@ export default function (parentClass) {
             { name: "$Jumps remaining", value: this._jumpsRemaining },
             { name: "$Animation mode",  value: animMode },
             { name: "$Contact grace (s)", value: this._contactGrace, onedit: v => { this.setContactGrace(+v); } },
+            { name: "$Wall jump lock (s)", value: this._wallJumpLock, onedit: v => { this.setWallJumpLock(+v); } },
           ],
         },
       ];

@@ -25,6 +25,7 @@
 17. [Save & Load](#17-save--load)
 18. [Tips and Common Mistakes](#18-tips-and-common-mistakes)
 19. [Scripting Interface](#19-scripting-interface)
+20. [Upgrading from 1.6.x](#20-upgrading-from-16x)
 
 ---
 
@@ -55,7 +56,7 @@ Platformer Physics replaces the kinematic solver with the Physics engine while p
 | Concept | What it means |
 |---|---|
 | **Physics sibling** | The built-in Physics behavior on the same object. Platformer Physics accesses it directly via `this.instance.behaviors.Physics`, using C3's standard behavior key lookup. |
-| **Contact classification** | Each Physics contact point is classified as floor, ceiling, or wall based on its position relative to the instance center. |
+| **Contact classification** | Each Physics contact point is classified as floor, ceiling, or wall based on its position relative to the center of the instance's bounding box, so any image origin and mirrored/flipped sprites work. |
 | **Acceleration model** | Horizontal speed ramps toward Max Speed by Acceleration per second, and decays toward zero by Deceleration per second - matching the built-in Platform behavior exactly. |
 | **Coyote time** | A grace window after leaving a ledge during which the character can still jump. |
 | **Jump buffer** | A grace window that remembers a jump press before landing, firing it automatically on the next landing tick. |
@@ -109,7 +110,7 @@ Set these Physics behavior properties for platformer-feel:
 
 ### Physics setup for Wall Slide & Wall Jump
 
-Wall detection works by reading contact point positions from the Physics body. For reliable wall contacts your character needs a **tall, narrow collision shape** — ideally a rectangle or capsule that is clearly taller than it is wide.
+Wall detection works by reading contact point positions from the Physics body. For reliable wall contacts your character needs a **tall, narrow collision shape**, ideally a rectangle or capsule that is clearly taller than it is wide. Plain boxes (the default sprite collision polygon) are fully supported: Box2D reports a box's wall contacts at its corners, and Platformer Physics tells wall corners from floor corners automatically (see §8, *Box corners*).
 
 Key Physics properties for wall abilities:
 
@@ -120,6 +121,8 @@ Key Physics properties for wall abilities:
 | Linear Damping | `0` | Damping slows the wall-slide speed in ways the Wall Slide Speed property cannot compensate for |
 
 > **Collision shape tip:** A box or capsule that closely matches the visible sprite gives the cleanest wall contacts. A circle will almost never produce side contacts — wall slide and wall jump will not trigger.
+>
+> **Tiled floors:** Box2D can catch a box's bottom corner on the seam between two adjacent floor tiles, briefly stopping the character or registering a wall. Cutting a few pixels off the two bottom corners of the collision polygon (an octagon-like shape) avoids this and also helps on slopes and ledges.
 
 ### Physics setup for Coyote Time & Jump Buffer
 
@@ -177,6 +180,7 @@ Configure these in the Properties Bar when the object is selected.
 
 | Property | Type | Default | Description |
 |---|---|---|---|
+| **Debug Mode** | Checkbox | `Off` | Print contact and velocity state to the browser console each tick. |
 | **Max Speed** | Float | `200` | Maximum horizontal movement speed in px/s. |
 | **Acceleration** | Float | `1500` | Rate at which horizontal velocity increases toward Max Speed (px/s²). |
 | **Deceleration** | Float | `1500` | Rate at which horizontal velocity decreases to zero when no input is given (px/s²). |
@@ -185,14 +189,17 @@ Configure these in the Properties Bar when the object is selected.
 | **Max Fall Speed** | Float | `1000` | Terminal velocity clamp (px/s downward). |
 | **Slope Tolerance** | Float | `0.35` | Biases the wall/floor boundary toward floor classification. At 0 the algorithm has equal horizontal/vertical weight. At 0.35 a contact must be substantially more horizontal than vertical to register as a wall, preventing sloped-surface and corner contacts from spuriously triggering wall-slide or wall-jump. See §8. |
 | **Coyote Time** | Float | `0.1` | Seconds after leaving a ledge during which a jump is still allowed. |
+| **Wall Coyote Time** | Float | `0` | Seconds after leaving a wall during which a wall jump is still allowed. 0 = disabled. See §6. |
 | **Jump Buffer** | Float | `0.1` | Seconds a jump input is remembered before landing. |
 | **Max Jumps** | Integer | `1` | Total jumps per airborne period. 1 = single, 2 = double jump. |
 | **Wall Slide** | Checkbox | `Off` | Clamp fall speed when pressing into a wall while airborne. |
 | **Wall Slide Speed** | Float | `80` | Maximum downward speed (px/s) while wall sliding. |
 | **Wall Jump** | Checkbox | `Off` | Allow jumping off a wall. Pushes away from the wall horizontally. |
 | **Wall Jump Strength** | Float | `450` | Horizontal impulse of a wall jump. Vertical uses Jump Strength. |
+| **Wall Jump Input Lock** | Float | `0.15` | Seconds after a wall jump during which input toward that wall is ignored, so the jump carries away from it. 0 = no lock. |
 | **Variable Jump Height** | Checkbox | `On` | Releasing jump early dampens upward velocity for short/tall jump variation. |
-| **Debug Mode** | Checkbox | `Off` | Print contact and velocity state to the browser console each tick. |
+| **Jump Release Damping** | Float | `50` | Percentage (0–100) of upward velocity kept when jump is released early. 0 = instant cut, 100 = no variable height. |
+| **Enabled** | Checkbox | `On` | Whether the behavior starts active. Turn off to start with movement disabled, then use **Set enabled** to switch it on. |
 
 ---
 
@@ -274,6 +281,8 @@ Trigger: PlatformerPhysics -> On facing changed
 ```
 
 The `FacingDirection` expression returns `-1` (left) or `1` (right).
+
+Mirroring or flipping the object is safe: contact classification measures from the bounding box, so floor, wall, and ceiling detection work the same in every orientation. `FacingDirection` follows input, not the object's mirrored state.
 
 ---
 
@@ -387,6 +396,8 @@ Enable **Wall Jump** in properties (or with `SetWallJump`). When the player pres
 - Horizontal impulse: `WallJumpStrength` (away from the wall)
 - Vertical impulse: `JumpStrength` (upward)
 - Velocity is zeroed before the impulse, guaranteeing a consistent arc regardless of current speed
+- For **Wall Jump Input Lock** seconds (default `0.15`), input pushing back toward that wall is ignored, so holding toward the wall doesn't immediately steer the character back onto it. Input away from the wall still works. The lock ends early on landing.
+- The horizontal push can exceed Max Speed; the excess eases off at the Deceleration rate (or Acceleration, if Deceleration is 0) rather than being cut to Max Speed. This applies only to wall jumps: other speed above Max Speed (Apply Impulse, Set Vector X, Physics pushes, ending a driven move) is capped on the next tick
 
 ```
 Trigger: PlatformerPhysics -> On wall jumped
@@ -482,6 +493,20 @@ else                                        →  floor if contact.y > center.y, 
 
 Each contact point is assigned to **exactly one** category. This mutual-exclusion guarantee is critical for box and polygon shapes: the previous approach used independent threshold checks that allowed corner contacts to simultaneously set a floor flag *and* a wall flag. That caused wall slide to fail because `IsWallSliding` is guarded by `!IsOnFloor`.
 
+Center and half-extents come from the instance's **bounding box**, so the test works with any image origin (e.g. bottom-center) and with mirrored or flipped sprites.
+
+### Box corners (face-pair disambiguation)
+
+A box touching a flat surface gets its Box2D contacts at the **corners** of the touching face, where `normDx ≈ normDy ≈ 1`. A single corner point can't say whether it belongs to a floor or a wall, so the test above alone would classify the corners of a wall as floor (bottom) and ceiling (top).
+
+To resolve this, each near-corner contact (`normDx ≥ 0.75` and `normDy ≥ 0.75`) looks at the other contacts this tick:
+
+- Another contact with the **same x** and a different y → they lie on a vertical face → **wall**
+- Another contact with the **same y** and a different x → horizontal face → **floor / ceiling**
+- Both or neither → the normal rule above decides
+
+A lone corner (e.g. a box resting on a slope) keeps the normal rule, so slope behavior is unchanged.
+
 ### Why normalization matters
 
 Without normalisation, a wide, flat character would have contacts near the bottom that are slightly to the side - these would incorrectly classify as wall contacts. By normalizing by `halfWidth` and `halfHeight` separately, the algorithm compares each contact's proportional distance to each edge. A contact that is 90 % of the way to the bottom edge and only 40 % of the way to the side edge is unambiguously a floor contact regardless of the sprite's aspect ratio.
@@ -490,7 +515,7 @@ Without normalisation, a wide, flat character would have contacts near the botto
 
 **Slope Tolerance** (default `0.35`) biases the wall/floor decision toward floor. The raw comparison (`normDx >= normDy`) gives equal weight to both axes, so any contact within 45° of the vertical is treated as a wall. Multiplying `normDx` by `(1 − SlopeTolerance)` raises the wall threshold: a contact must be proportionally more horizontal than vertical before it registers as a wall.
 
-At 0.35 a contact's horizontal component must exceed approximately 65% of its vertical component to register as a wall. This prevents sloped-surface contacts and box-corner contacts (which Box2D places at the edge of the touching face) from spuriously triggering wall-slide or wall-jump.
+At 0.35 a contact's horizontal component must exceed approximately 65% of its vertical component to register as a wall. This prevents sloped-surface contacts and lone corner contacts (e.g. a box resting on a slope) from spuriously triggering wall-slide or wall-jump. Corners that have a partner contact on the same face are settled by the face-pair rule above instead, so Slope Tolerance doesn't need raising to make boxes work.
 
 Set it to `0` to restore strict 45° classification. Values above `0.5` risk treating genuine wall contacts as floor contacts.
 
@@ -503,9 +528,13 @@ Box2D can silently drop valid contacts for 1–2 consecutive simulation steps ev
 - `OnLeftWallContact` and the wall coyote window re-arming mid-slide
 - Coyote time starting a frame early after walking off a ledge
 
-Platformer Physics guards against this with a **configurable grace window** (default 2 frames) per contact state. `IsOnFloor`, `IsOnWallLeft`, and `IsOnWallRight` only clear after the contact has been absent for that many consecutive frames. The grace is forcibly expired on any jump so the character enters the airborne state immediately without delay.
+Platformer Physics guards against this with a **configurable grace window** (default `0.05` seconds, ~3 frames at 60 fps) per contact state. `IsOnFloor`, `IsOnWallLeft`, and `IsOnWallRight` only clear after the contact has been absent for that long. The grace is forcibly expired on any jump so the character enters the airborne state immediately without delay.
 
-The grace frame count can be read with the `ContactGrace` expression and changed at runtime with the **Set contact grace** action. Lower values make contact state more reactive; higher values smooth out jitter on surfaces that produce intermittent contacts.
+The grace duration can be read with the `ContactGrace` expression and changed at runtime with the **Set contact grace** action. Lower values make contact state more reactive; higher values smooth out jitter on surfaces that produce intermittent contacts.
+
+The grace only extends contact that really happened: a character spawned, re-enabled, or loaded from a savegame in mid-air never gets a phantom landing from it.
+
+> **Note:** contact grace had no effect in 1.6.0–1.6.1 because of a bug, and works again from 1.7.0. Projects tuned on 1.6.x will see `IsOnFloor` / `IsOnWall` stay true ~0.05s after contact ends, and `OnFallenOff` fire ~3 frames later. Set contact grace to `0` to restore the 1.6.x timing exactly.
 
 ### Floor normal (derived)
 
@@ -519,12 +548,14 @@ See §13 for the `FloorNormalX`, `FloorNormalY`, and `FloorNormalAngle` expressi
 
 - On very steep slopes (> ~60°), contacts may still classify as walls, a fundamental limitation of position-based classification without access to contact normals. Increasing Slope Tolerance helps on gentle slopes; the most reliable fix for steep terrain is adjusting the Physics collision shape.
 - If the Physics collision shape is significantly smaller than the sprite bounding box, misclassification can occur
-- Circle collision shapes produce contacts only at the single outermost contact point, which is always geometrically unambiguous — circles give the cleanest floor/wall separation
+- Circle collision shapes produce contacts only at the single outermost contact point, which is always geometrically unambiguous. Circles give the cleanest floor/wall separation (but rarely produce wall contacts, see §2)
+- With **Prevent Rotation** off, the bounding box grows as the body tilts, which skews classification. Keep Prevent Rotation on
+- Boxes can snag on seams between adjacent floor tiles (a Box2D limitation); chamfer the bottom corners of the collision polygon to avoid it
 
 ### Best practices
 
 - Ensure the Physics collision shape closely matches the sprite bounding box
-- Use a capsule or rounded-rectangle for the character body — the flat bottom surface produces reliable, clustered floor contacts
+- Use a box, capsule, or rounded-rectangle for the character body. The flat bottom surface produces reliable, clustered floor contacts. On tiled floors, prefer slightly chamfered bottom corners
 - Avoid very thin collision polygons — edge contacts can flip between floor and wall classification unpredictably
 - Test with **Debug Mode** enabled to see live contact and velocity state in the console
 
@@ -632,7 +663,7 @@ Event: Every tick
 | **Apply impulse** `vx, vy` | Add an instantaneous velocity impulse to the current Physics velocity (px/s). The behavior's deceleration naturally tapers it off. Does not suppress input. |
 | **Set driven move** `vx, vy, duration` | Temporarily drives the character at the given velocity, suppressing movement input for `duration` seconds. Use for dashes, knockback, launch pads, or any externally driven movement. Gravity, wall slide, and max fall speed still apply. |
 | **Set ignore input** `enabled` | When true, all simulated input is ignored. Gravity and physics continue. |
-| **Set enabled** `enabled` | Fully enable/disable the behavior. Disabled = stops modifying Physics velocity entirely. |
+| **Set enabled** `enabled` | Fully enable/disable the behavior. Disabled = stops modifying Physics velocity entirely. Use the **Enabled** property to choose the starting state. |
 | **Set freeze axis** `axis, freeze` | Lock Horizontal, Vertical, or Both axes. Frozen axes have velocity forced to zero every tick. |
 | **Set on floor** `value` | Override the floor contact flag for this tick. `true` also resets jumps remaining, coyote timer, and air time. Must be called every tick to sustain - Physics contacts reclassify the flag each frame. |
 
@@ -649,6 +680,7 @@ Event: Every tick
 | **Set wall slide** `enabled` | Enable/disable wall sliding at runtime. |
 | **Set wall slide speed** `value` | Override the maximum fall speed (px/s) while wall sliding. |
 | **Set wall coyote time** `value` | Set the wall coyote time duration (seconds). Pass 0 to disable. |
+| **Set wall jump input lock** `seconds` | Set how long input toward the wall is ignored after a wall jump. Pass 0 to disable. |
 | **Set variable jump height** `enabled` | Enable or disable variable jump height at runtime. |
 | **Set jump release damping** `percent` | Set the percentage (0–100) of upward velocity kept on early jump release. Default 50. |
 
@@ -665,7 +697,7 @@ Event: Every tick
 | **Set coyote time** `value` | Override floor coyote time (seconds) at runtime. Pass 0 to disable. |
 | **Set jump buffer** `value` | Override jump buffer duration (seconds) at runtime. Pass 0 to disable. |
 | **Set debug mode** `enabled` | Enable or disable console debug output at runtime. |
-| **Set contact grace** `frames` | Set the number of consecutive frames without a contact before that state clears (default 2). Lower = more reactive; higher = smoother on jittery surfaces. |
+| **Set contact grace** `seconds` | Set how long (seconds) a contact must be absent before that state clears (default 0.05, ~3 frames at 60 fps). Lower = more reactive; higher = smoother on jittery surfaces. |
 
 ---
 
@@ -1273,6 +1305,183 @@ The `clamp(…, -1, 1)` guard ensures the factor stays within range even if cont
 
 ---
 
+### Use Case 22 - Wall Jump Shaft with a Box-Shaped, Mirrored Character
+
+**Scenario:** A vertical shaft climbed by wall-jumping between two walls. The character uses the default sprite collision box, a bottom-center image origin, and is mirrored to face left. Before 1.7.0 this combination never registered walls; it now works with no workarounds.
+
+#### Setup
+
+- Player sprite: default collision polygon (the full sprite box), image origin at bottom-center.
+- Physics: **Prevent Rotation** `Yes`, **Friction** `0`.
+- Platformer Physics: **Wall Slide** `On`, **Wall Jump** `On`, **Wall Jump Input Lock** `0.15` (default).
+- If the shaft floor is built from tiles, cut a few pixels off the two bottom corners of the collision polygon so the box doesn't catch on tile seams.
+
+#### Event sheet
+```
+// Mirroring is safe: detection measures from the bounding box
+Trigger: PlatformerPhysics -> On facing changed
+  Condition: PlatformerPhysics -> Is facing right
+    Action: Player -> Set mirrored to false
+  Condition: PlatformerPhysics -> Is facing right [INVERTED]
+    Action: Player -> Set mirrored to true
+
+// Face the wall while sliding, so the slide animation hugs it
+Event: PlatformerPhysics -> Is wall sliding
+  Action: Player -> Set animation to "WallSlide"
+  Sub-event: PlatformerPhysics.WallContactSide = -1
+    Action: Player -> Set mirrored to true
+  Sub-event: PlatformerPhysics.WallContactSide = 1
+    Action: Player -> Set mirrored to false
+
+// Spark on the wall that was just left
+Trigger: PlatformerPhysics -> On wall jumped
+  Action: Spawn "WallSpark" at Player.X, Player.Y
+```
+
+> Hold toward the next wall as soon as you leave one. The input lock only ignores input toward the wall you just jumped off, so steering toward the opposite wall works immediately.
+
+---
+
+### Use Case 23 - Wall Jump Feel per Ability and Difficulty
+
+**Scenario:** The default wall jump pushes away from the wall. A "Climbing Claws" pickup lets the player scale a single wall by steering straight back, and an Easy difficulty gives a wider, more forgiving arc.
+
+The **Wall Jump Input Lock** decides how long holding toward the wall is ignored after a wall jump. `0` lets the player steer straight back (wall climbing); higher values carry the jump further out.
+
+#### Event sheet
+```
+// Difficulty presets
+Event: On start of layout
+  Condition: Difficulty = "Easy"
+    Action: PlatformerPhysics -> Set wall jump input lock to 0.25 second(s)
+    Action: PlatformerPhysics -> Set wall coyote time to 0.12
+  Condition: Difficulty = "Hard"
+    Action: PlatformerPhysics -> Set wall jump input lock to 0.1 second(s)
+    Action: PlatformerPhysics -> Set wall coyote time to 0
+
+// Climbing Claws: no lock, so one wall can be climbed by steering back
+Event: Player -> On collision with ClawsPickup
+  Action: PlatformerPhysics -> Set wall jump input lock to 0 second(s)
+  Action: PlatformerPhysics -> Set wall jump strength to 250
+  Action: ClawsPickup -> Destroy
+```
+
+| Lock | Strength | Feel |
+|---|---|---|
+| `0` | `250` | Climb one wall by steering straight back (Mega Man X style) |
+| `0.15` | `450` | Default: clear push off the wall, then full control |
+| `0.25` | `550` | Long, forgiving arcs between distant walls |
+
+---
+
+### Use Case 24 - Wall Jump Speed Trail
+
+**Scenario:** Show a speed-lines effect while a wall jump's push is faster than normal running speed.
+
+A wall jump's horizontal push may exceed **Max Speed** and then eases back down at the Deceleration rate. Comparing `VectorX` against `MaxSpeed` shows exactly that window. Other sources of extra speed (Apply Impulse, Set Vector X, Physics pushes) are capped on the next tick, so the effect only appears after wall jumps.
+
+#### Event sheet
+```
+Event: Every tick
+  Condition: abs(PlatformerPhysics.VectorX) > PlatformerPhysics.MaxSpeed
+    Action: SpeedLines -> Set visible to true
+    Action: SpeedLines -> Set opacity to
+      clamp((abs(PlatformerPhysics.VectorX) - PlatformerPhysics.MaxSpeed) / 2, 0, 100)
+  Else
+    Action: SpeedLines -> Set visible to false
+```
+
+---
+
+### Use Case 25 - Start Disabled for an Intro or Character Select
+
+**Scenario:** The player drops into the level during an intro animation and must not move or be pushed around by input until it finishes. Enemies placed in the layout stay inactive until the player gets close.
+
+Set the **Enabled** property to `Off` in the Properties Bar. The object still has its Physics body, so it falls and collides normally; Platformer Physics just doesn't drive it until enabled. (If you rely on the behavior's own **Gravity** property with Physics world gravity at 0, a disabled character won't fall, since that extra gravity is applied by the behavior.)
+
+#### Event sheet
+```
+// Player: Enabled = Off in properties
+Event: On start of layout
+  Action: Player -> Set animation to "DropIn"
+
+Trigger: Player -> On animation "DropIn" finished
+  Action: Player.PlatformerPhysics -> Set enabled to true
+  Action: Player -> Set animation to "Idle"
+
+// Enemies: Enabled = Off in properties; wake up when the player approaches
+Event: Enemy.PlatformerPhysics -> Is enabled [INVERTED]
+  Condition: distance(Enemy.X, Enemy.Y, Player.X, Player.Y) < 400
+    Action: Enemy.PlatformerPhysics -> Set enabled to true
+```
+
+> Use **Enabled** for "not yet active" and **Set ignore input** for "active but not listening" (e.g. a cutscene where the character should still land, slide and react to Physics through the behavior).
+
+---
+
+### Use Case 26 - Checking Collision Detection with Debug Mode
+
+**Scenario:** A wall slide or wall jump isn't triggering on a particular wall, and you want to see how the behavior classifies the contacts.
+
+**Debug Mode** is now the first property, so it's quick to toggle per object. You can also switch it at runtime.
+
+#### Event sheet
+```
+// Toggle console output with F1 during testing
+// (global variable DebugOn = 0; the action's parameter is a checkbox,
+//  so use one branch per state)
+Event: Keyboard -> On key pressed F1
+  Sub-event: DebugOn = 0
+    Action: PlatformerPhysics -> Set debug mode to true
+    Action: System -> Set DebugOn to 1
+  Else
+    Action: PlatformerPhysics -> Set debug mode to false
+    Action: System -> Set DebugOn to 0
+```
+
+#### What to look for
+
+Press against the wall in mid-air and read the console line:
+
+| Console shows | Meaning | Fix |
+|---|---|---|
+| `floor=0 wall=R ceil=false` | Correct: right wall detected | Nothing needed |
+| `floor=1 wall=none ceil=true` | Wall read as floor + ceiling | Make sure you're on 1.7.0+; check the collision shape matches the sprite box |
+| `wall=` flickers between `R` and `none` | Contacts dropping out | Raise **Set contact grace** slightly (e.g. `0.08`) |
+| `floor=1` while clearly airborne near a tile seam | Box corner caught on a seam | Chamfer the bottom corners of the collision polygon |
+
+---
+
+### Use Case 27 - Tuning Contact Grace per Surface
+
+**Scenario:** A wobbly rope bridge built from Physics joints makes contacts flicker, so `On landed` plays its sound repeatedly. A speedrun mode wants ledges to be detected as fast as possible.
+
+#### Event sheet
+```
+// Smooth out jittery contacts while on the bridge
+Event: Player -> Is overlapping RopeBridgeZone
+  Action: PlatformerPhysics -> Set contact grace to 0.1 second(s)
+  Else
+    Action: PlatformerPhysics -> Set contact grace to 0.05 second(s)
+
+// Speedrun mode: contact state clears instantly (1.6.x timing)
+Event: On start of layout
+  Condition: GameMode = "Speedrun"
+    Action: PlatformerPhysics -> Set contact grace to 0 second(s)
+
+// Landing sound plays once per real landing
+Trigger: PlatformerPhysics -> On landed
+  Action: Audio -> Play "land" (volume 0 dB)
+```
+
+| Grace | Use for |
+|---|---|
+| `0` | Fastest ledge detection; matches 1.6.x timing |
+| `0.05` | Default: absorbs Box2D's 1-2 frame contact dropouts |
+| `0.08`-`0.1` | Jointed, wobbly, or fast-moving Physics surfaces |
+
+---
+
 ## 16. C3 Debugger
 
 Platformer Physics integrates with the **C3 built-in debugger**  and separately with the **browser console** when Debug Mode is enabled. Both surfaces show live state.
@@ -1298,6 +1507,8 @@ The behavior appears as a collapsible section in the C3 debugger panel. Most pro
 | `Variable jump` | ✓ toggle | |
 | `Jump release damping` | ✓ | 0–1 fraction (0 = instant cut, 1 = no variable height) |
 | `Wall coyote time` | ✓ | Seconds ≥ 0 |
+| `Contact grace (s)` | ✓ | Seconds ≥ 0 (default 0.05) |
+| `Wall jump lock (s)` | ✓ | Seconds ≥ 0 (default 0.15) |
 | `Jumps remaining` | read-only | Resets to Max jumps on landing |
 | `Animation mode` | read-only | Idle / Moving / Jumping / Falling / Wall sliding / Disabled |
 
@@ -1306,7 +1517,7 @@ The behavior appears as a collapsible section in the C3 debugger panel. Most pro
 When **Debug Mode** is enabled in the behavior properties, a structured line is logged to the browser console each tick:
 
 ```
-[GroundForce] floor=1(2) wall=none ceil=false | vx=198.3 vy=-142.6 | jumps=0/2 coyote=0.000 buf=0.000 air=0.31s | slide=false facing=R
+[Physics Platform Movement] floor=1(2) wall=none ceil=false | vx=198.3 vy=-142.6 | jumps=0/2 coyote=0.000 buf=0.000 air=0.31s | slide=false facing=R
 ```
 
 ### Console output fields
@@ -1342,6 +1553,10 @@ Platformer Physics fully supports Construct 3's savegame system. All runtime sta
 - Facing direction
 - Jump release damping
 - Axis freeze state (frozen X, frozen Y)
+- Contact grace duration
+- Wall jump input lock (duration, remaining time, and any wall-jump push still easing off)
+
+Saves made with older versions load cleanly: settings missing from the save keep the values from the object's properties. Contact grace windows are deliberately not saved, so a loaded character's floor/wall state comes only from what it is actually touching.
 
 No extra events are needed - `_saveToJson` and `_loadFromJson` handle everything automatically.
 
@@ -1359,15 +1574,17 @@ No extra events are needed - `_saveToJson` and `_loadFromJson` handle everything
 
 - **Don't mix `SetVectorY` with jump inputs on the same tick.** `SetVectorY` runs after the jump impulse and will overwrite it.
 
-- **All timers use instance delta time.** Every timer — floor coyote, wall coyote, jump buffer, air time, and driven move — advances using `instance.dt`, the instance-level delta time. This means they all respect both the global timescale *and* any per-instance timescale set on that specific object. In slow-motion they all stretch proportionally, which usually feels correct. Contact grace is frame-count based and is therefore naturally timescale-independent.
+- **All timers use instance delta time.** Every timer (floor coyote, wall coyote, jump buffer, air time, and driven move) advances using `instance.dt`, the instance-level delta time. This means they all respect both the global timescale *and* any per-instance timescale set on that specific object. In slow-motion they all stretch proportionally, which usually feels correct. Contact grace and the wall jump input lock are measured in seconds of instance time too.
 
-- **Adjust contact grace for unusual surfaces.** The default grace of 2 frames suits most character shapes. If you see `OnLanded` / `OnFallenOff` jittering on a specific surface, increase grace to 3–4. If you need contact state to clear as fast as possible (e.g. a character that must detect leaving a surface within one frame), set it to 0. Use the `Set contact grace` action at runtime or read the current value with `ContactGrace`.
+- **Adjust contact grace for unusual surfaces.** The default grace of 0.05 seconds (~3 frames at 60 fps) suits most character shapes. If you see `OnLanded` / `OnFallenOff` jittering on a specific surface, increase it to 0.07–0.1. If you need contact state to clear as fast as possible (e.g. a character that must detect leaving a surface within one frame), set it to 0. Use the `Set contact grace` action at runtime or read the current value with `ContactGrace`.
 
 - **Steep slopes may misclassify as walls.** The contact classifier uses normalized half-extent comparison biased by **Slope Tolerance** (default 0.35). Increasing Slope Tolerance reclassifies contacts closer to 45° as floor rather than wall, which helps on gentle slopes. For very steep terrain the most reliable fix remains adjusting the Physics collision shape: a body clearly taller than it is wide produces an unambiguous floor/wall separation.
 
-- **The Physics collision shape matters.** Use a convex capsule or rounded rectangle for the character. A simple box can catch on platform edges; a circle can slide off slopes. The collision shape directly affects contact point positions, which drive floor/wall/ceiling detection.
+- **The Physics collision shape matters.** A box, capsule, or rounded rectangle all work. A plain box can catch on seams between floor tiles (chamfer its bottom corners); a circle can slide off slopes and rarely registers walls. The collision shape directly affects contact point positions, which drive floor/wall/ceiling detection.
 
 - **`SimulateControl("Stop")` is different from the `Stop` action.** `SimulateControl("Stop")` sets a flag that zeroes velocity during the tick processing. The `Stop` action immediately zeroes velocity via `setVelocity(0, 0)`. Use `Stop` for instant halts; use `SimulateControl("Stop")` to integrate with the tick pipeline.
+
+- **Wall jump feels like it climbs the wall?** Holding toward the wall right after a wall jump steers the character back onto it. The **Wall Jump Input Lock** property (default 0.15s) ignores that input briefly; raise it for a wider arc, or set it to 0 to allow immediate steering back.
 
 - **Gravity property is additive.** It stacks on top of Physics world gravity. If you set both to non-zero values, the character falls faster than other Physics objects. Set one or the other to zero unless you deliberately want heavier-feeling characters.
 
@@ -1400,7 +1617,7 @@ beh.setMaxFallSpeed(1200);     // terminal falling speed in px/s
 beh.setCoyoteTime(0.15);       // floor coyote time in seconds (0 = disabled)
 beh.setJumpBuffer(0.12);       // jump buffer in seconds (0 = disabled)
 beh.setDebugMode(true);        // enable/disable console debug output
-beh.setContactGrace(3);        // consecutive frames before a contact state clears (default 2)
+beh.setContactGrace(0.05);     // seconds a contact must be absent before its state clears (default 0.05)
 ```
 
 ---
@@ -1416,6 +1633,7 @@ beh.setWallJumpStrength(500);   // horizontal impulse of a wall jump (px/s)
 beh.setWallSlide(true);         // enable wall sliding
 beh.setWallSlideSpeed(100);     // max fall speed while wall sliding (px/s)
 beh.setWallCoyoteTime(0.1);     // wall coyote time in seconds (0 = disabled)
+beh.setWallJumpLock(0.15);      // seconds input toward the wall is ignored after a wall jump (0 = no lock)
 beh.setVariableJumpHeight(true); // enable/disable variable jump height
 ```
 
@@ -1623,3 +1841,32 @@ function tickEnemy(enemyInst, targetX) {
 - **Direct velocity calls bypass `setIgnoreInput`.** Setting `IgnoreInput = true` blocks `simulateControl` input, but direct calls like `setVelocity`, `setVectorX`, `setVectorY`, `applyImpulse`, and `drivenVelocity` still apply. This is intentional: code-driven overrides should not be blocked by the input suppression flag.
 - **`drivenVelocity` timer survives save/load.** The driven move timer is saved to JSON, so a driven move mid-flight resumes correctly after a load.
 - **`simulateControl` accepts strings or indexes.** From script, pass a readable string like `"jump"` or `"Jump Release"` - spaces, underscores, and hyphens are ignored when matching. Numeric indexes (0–4) still work and are what the ACE combo dropdown passes internally.
+
+---
+
+## 20. Upgrading from 1.6.x
+
+Installing 1.7.0 over 1.6.x is safe for existing projects:
+
+- **No ACEs were removed or renamed.** Existing events and scripts keep working.
+- **Property values carry over.** Properties were reordered in the Properties Bar (Debug Mode first, Enabled last), but Construct stores values by property id, so every object keeps its settings. New properties take their defaults: **Wall Jump Input Lock** `0.15`, **Enabled** `On`.
+- **Savegames from 1.6.x load.** Settings missing from an old save keep the object's property values.
+
+### What may feel different
+
+| Change | Why | Restore 1.6.x behavior |
+|---|---|---|
+| Wall slide and wall jump now work with box collision shapes | Box wall corners used to be read as floor + ceiling (§8, *Box corners*) | Not needed (bug fix) |
+| Jumping while pressed against a wall now works | The false ceiling contact cancelled the jump | Not needed (bug fix) |
+| Walls are detected while the sprite is mirrored or flipped, and with non-centered origins | Classification now measures from the bounding box | Not needed (bug fix) |
+| `IsOnFloor` / `IsOnWall` stay true ~0.05s after contact ends; `OnFallenOff` fires ~3 frames later | Contact grace had no effect in 1.6.0–1.6.1 and works again | **Set contact grace** to `0` |
+| Holding toward the wall right after a wall jump is ignored for 0.15s | New **Wall Jump Input Lock** | Set **Wall Jump Input Lock** to `0` |
+| A wall jump's horizontal push briefly exceeds Max Speed, then eases off | It used to be cut to Max Speed on the next tick | Not needed (only wall jumps; all other speed is capped as before) |
+
+### Workarounds you can remove
+
+If your project compensated for the old detection problems, you can usually undo it:
+
+- A **Slope Tolerance** raised or lowered to coax box walls into registering: return it to `0.35`.
+- Collision polygons reshaped only to make walls detect (e.g. a narrow capsule instead of the sprite box): a plain box now works. Keep chamfered bottom corners if you have tiled floors (§2).
+- Events that avoided mirroring the sprite, or moved the image origin to the center, so walls would register: both are now unnecessary.

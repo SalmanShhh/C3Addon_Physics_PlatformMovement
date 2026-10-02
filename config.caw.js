@@ -72,6 +72,16 @@ export const info = {
 };
 
 export const properties = [
+  // Runtime reads these by position (_getInitProperties); keep the index
+  // map in src/runtime/instance.js in sync. Projects store values by id,
+  // so reordering here is safe for existing projects.
+  {
+    type: PROPERTY_TYPE.CHECK,
+    id: "debugMode",
+    name: "Debug Mode",
+    desc: "Print contact classification and velocity state to the browser console each tick.",
+    options: { initialValue: false },
+  },
   {
     type: PROPERTY_TYPE.FLOAT,
     id: "maxSpeed",
@@ -178,6 +188,13 @@ export const properties = [
     options: { initialValue: 450 },
   },
   {
+    type: PROPERTY_TYPE.FLOAT,
+    id: "wallJumpLock",
+    name: "Wall Jump Input Lock",
+    desc: "Seconds after a wall jump during which input toward that wall is ignored, so the jump carries away from the wall. 0 = no lock.",
+    options: { initialValue: 0.15 },
+  },
+  {
     type: PROPERTY_TYPE.CHECK,
     id: "variableJumpHeight",
     name: "Variable Jump Height",
@@ -193,9 +210,9 @@ export const properties = [
   },
   {
     type: PROPERTY_TYPE.CHECK,
-    id: "debugMode",
-    name: "Debug Mode",
-    desc: "Print contact classification and velocity state to the browser console each tick.",
-    options: { initialValue: false },
+    id: "enabled",
+    name: "Enabled",
+    desc: "Whether the behavior is initially active. Disable to start with movement off, then enable it with the Set enabled action.",
+    options: { initialValue: true },
   },
 ];

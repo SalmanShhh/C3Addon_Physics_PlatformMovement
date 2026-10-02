@@ -63,5 +63,10 @@
     "added": "- Contact Grace is viewable and editable in the Debugger",
     "changed": "",
     "fixed": ""
+  },
+  "1.7.0.0": {
+    "added": "- Wall Jump Input Lock property (default 0.15s) and \"Set wall jump input lock\" action: briefly ignores input toward the wall after a wall jump\n- \"Enabled\" property (default On) to start the behavior disabled",
+    "changed": "- A wall jump's horizontal push can exceed Max Speed and eases off at the Deceleration rate (other speed above Max Speed still snaps to it, as before)\n- Contact classification measures from the bounding box (works with any origin)\n- Properties reordered: Debug Mode first, Wall Jump Input Lock beside the other wall jump settings, Enabled last. Existing projects keep their values\n- Migration: with contact grace working again, Is on floor / Is on wall stay true ~0.05s after contact ends, so On fallen off fires ~3 frames later than in 1.6.x. Set contact grace to 0 to restore 1.6.x timing",
+    "fixed": "- Wall slide / wall jump with box collision shapes (wall corners were read as floor + ceiling)\n- Jumping while pressed against a wall (false ceiling bonk)\n- Wall detection on mirrored/flipped sprites\n- Floor/wall detection with non-centered image origins (e.g. bottom-center)\n- Contact grace had no effect since 1.6.0\n- No phantom landing when spawned, re-enabled or loaded in mid-air\n- Contact grace and wall jump lock saved/loaded; older saves keep the object's property values"
   }
 }

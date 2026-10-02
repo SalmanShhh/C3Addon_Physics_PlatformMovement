@@ -14,6 +14,10 @@
           "Conditions": "Conditions"
         },
         "properties": {
+          "debugMode": {
+            "name": "Debug Mode",
+            "desc": "Print contact classification and velocity state to the browser console each tick."
+          },
           "maxSpeed": {
             "name": "Max Speed",
             "desc": "Maximum horizontal movement speed in px/s."
@@ -74,6 +78,10 @@
             "name": "Wall Jump Strength",
             "desc": "Horizontal impulse component of a wall jump."
           },
+          "wallJumpLock": {
+            "name": "Wall Jump Input Lock",
+            "desc": "Seconds after a wall jump during which input toward that wall is ignored, so the jump carries away from the wall. 0 = no lock."
+          },
           "variableJumpHeight": {
             "name": "Variable Jump Height",
             "desc": "Hold the jump button for a higher jump, release it early for a shorter one."
@@ -82,9 +90,9 @@
             "name": "Jump Release Damping",
             "desc": "Percentage (0–100) of upward velocity retained when the jump button is released early. 50 = keep half speed; 0 = instant cut; 100 = no variable height effect."
           },
-          "debugMode": {
-            "name": "Debug Mode",
-            "desc": "Print contact classification and velocity state to the browser console each tick."
+          "enabled": {
+            "name": "Enabled",
+            "desc": "Whether the behavior is initially active. Disable to start with movement off, then enable it with the Set enabled action."
           }
         },
         "actions": {
@@ -256,6 +264,17 @@
               "enabled": {
                 "name": "Enabled",
                 "desc": "Enable wall jumping."
+              }
+            }
+          },
+          "SetWallJumpLock": {
+            "list-name": "Set wall jump input lock",
+            "display-text": "Set wall jump input lock to {0} second(s)",
+            "description": "How long input toward the wall is ignored after a wall jump. 0 = no lock.",
+            "params": {
+              "time": {
+                "name": "Time",
+                "desc": "Lock duration in seconds (min 0)."
               }
             }
           },
